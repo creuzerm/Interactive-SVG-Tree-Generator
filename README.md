@@ -1,4 +1,3 @@
-```
 # Interactive SVG Tree Generator
 
 This tool is a single-page web application designed for procedurally generating diverse tree images using various algorithms and rendering them as Scalable Vector Graphics (SVG). Users can dynamically adjust numerous parameters to customize the appearance of the trees and download the final output as an SVG file.
@@ -61,4 +60,4 @@ To maintain consistency and intent for future updates, please consider the follo
 * **Leaf Generation:** Leaves are currently simple circles. If more complex leaf shapes are desired, they should also be generated as SVG elements (e.g., polygons, or more complex paths). The `Leaf Size` and `Leafiness` sliders should continue to control their respective properties effectively.
 * **Responsiveness:** The UI layout is designed to be responsive using Tailwind's utility classes. Any new UI elements should adhere to this responsive design principle.
 * **SVG Download:** The download functionality relies on `XMLSerializer` and `URL.createObjectURL`. Ensure this mechanism remains functional for SVG export.
-```
+
