@@ -34,7 +34,7 @@
         }
         /* SVG display area styling */
         #svgContainer {
-            min-height: 400px;
+            min-height: 400px; /* Minimum height for the display area */
             background-color: #e0f2f7; /* Light blue for sky */
             border-radius: 8px;
             overflow: hidden;
@@ -42,11 +42,11 @@
             justify-content: center;
             align-items: center;
             position: relative; /* For ground rectangle positioning */
+            /* The SVG inside will now be explicitly sized by sliders */
         }
         #svgContainer svg {
             display: block;
-            width: 100%;
-            height: 100%;
+            /* SVG dimensions will be set by JS based on slider values */
         }
         /* Ground rectangle within SVG */
         .ground-rect {
@@ -203,6 +203,18 @@
                 <input type="range" id="leafinessSlider" min="0" max="100" value="50">
             </div>
 
+            <!-- Canvas Width Slider -->
+            <div class="slider-group">
+                <label for="canvasWidthSlider" class="text-sm font-medium text-gray-700">Canvas Width (inches): <span id="canvasWidthValue">8</span></label>
+                <input type="range" id="canvasWidthSlider" min="4" max="20" value="8">
+            </div>
+
+            <!-- Canvas Height Slider -->
+            <div class="slider-group">
+                <label for="canvasHeightSlider" class="text-sm font-medium text-gray-700">Canvas Height (inches): <span id="canvasHeightValue">8</span></label>
+                <input type="range" id="canvasHeightSlider" min="4" max="20" value="8">
+            </div>
+
             <!-- Background Checkbox -->
             <div class="checkbox-group">
                 <input type="checkbox" id="backgroundCheckbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked>
@@ -231,6 +243,9 @@
             return degrees * Math.PI / 180;
         }
 
+        // DPI for converting inches to pixels (standard web DPI)
+        const DPI = 96;
+
         // --- Tree Generation Algorithms ---
 
         /**
@@ -246,7 +261,12 @@
             };
             let iterations = Math.floor(params.branchiness / 2) + 3; // 3 to 8 iterations
             let angle = 25 + (params.irregularity / 2); // 25 to 75 degrees
-            let initialLength = params.size;
+            
+            // Scale initialLength and trunkThickness based on SVG height and size slider
+            const maxTreeHeightRatio = 0.8; // Tree can occupy up to 80% of SVG height
+            let initialLength = (params.svgHeight * maxTreeHeightRatio) * (params.size / 200);
+            let currentStrokeWidth = (params.svgHeight / 100) * (params.trunkThickness / 20); // Scale thickness relative to height and slider
+
             let startX = params.svgWidth / 2;
             let startY = params.svgHeight - 50;
 
@@ -303,14 +323,14 @@
             let y = startY;
             let currentAngle = -90; // Start pointing upwards
             let stack = [];
-            let currentStrokeWidth = params.trunkThickness; // Initial branch thickness from slider
+            let segmentStrokeWidth = currentStrokeWidth; // This will be adjusted per segment
 
             for (let i = 0; i < currentString.length; i++) {
                 const char = currentString[i];
                 const radians = toRadians(currentAngle);
                 // Branches get shorter and thinner with depth (stack.length represents depth)
                 let newLength = initialLength * Math.pow(0.7, stack.length);
-                let branchStrokeWidth = currentStrokeWidth * Math.pow(0.7, stack.length);
+                let branchStrokeWidth = segmentStrokeWidth * Math.pow(0.7, stack.length);
 
                 // Apply irregularity to length
                 newLength *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
@@ -319,7 +339,26 @@
                     case 'F': // Draw forward
                         const x2 = x + newLength * Math.cos(radians);
                         const y2 = y + newLength * Math.sin(radians);
-                        svgPaths.push(`<path d="M${x},${y} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
+
+                        // Calculate control point for quadratic Bezier curve
+                        const dx = x2 - x;
+                        const dy = y2 - y;
+                        const segmentLength = Math.sqrt(dx * dx + dy * dy);
+                        // Curve intensity based on irregularity and segment length (capped to prevent extreme bends)
+                        const curveIntensity = params.irregularity / 100 * Math.min(newLength, 50) * 0.5; // Adjust 0.5 for desired max curvature
+
+                        let cpX = (x + x2) / 2;
+                        let cpY = (y + y2) / 2;
+
+                        if (segmentLength > 0 && curveIntensity > 0) {
+                            const normalX = -dy / segmentLength; // Perpendicular vector component
+                            const normalY = dx / segmentLength; // Perpendicular vector component
+                            const offset = (Math.random() - 0.5) * 2 * curveIntensity; // Random offset +/- curveIntensity
+                            cpX += normalX * offset;
+                            cpY += normalY * offset;
+                        }
+                        
+                        svgPaths.push(`<path d="M${x},${y} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
                         
                         // Add leaves if conditions met and not 'Branchy' type
                         if (newLength < leafThresholdLength && params.treeType !== 'Branchy') {
@@ -335,14 +374,14 @@
                         currentAngle -= angle * (1 + (Math.random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
                         break;
                     case '[': // Push state
-                        stack.push({ x, y, angle: currentAngle, strokeWidth: currentStrokeWidth });
+                        stack.push({ x, y, angle: currentAngle, strokeWidth: segmentStrokeWidth });
                         break;
                     case ']': // Pop state
                         const prevState = stack.pop();
                         x = prevState.x;
                         y = prevState.y;
                         currentAngle = prevState.angle;
-                        currentStrokeWidth = prevState.strokeWidth;
+                        segmentStrokeWidth = prevState.strokeWidth;
                         break;
                     case 'X': // Non-drawing symbol
                     case 'Y': // Another non-drawing symbol
@@ -359,7 +398,12 @@
          */
         function generateFractalTreeSVG(params) {
             let svgElements = [];
-            let initialLength = params.size * 1.2;
+            
+            // Scale initialLength and trunkThickness based on SVG height and size slider
+            const maxTreeHeightRatio = 0.8; // Tree can occupy up to 80% of SVG height
+            let initialLength = (params.svgHeight * maxTreeHeightRatio) * (params.size / 200);
+            let initialStrokeWidth = (params.svgHeight / 100) * (params.trunkThickness / 20); // Scale thickness relative to height and slider
+
             let baseBranchAngle = 25;
             let maxDepth = params.branchiness + 3; // 4 to 13 depth
             let startX = params.svgWidth / 2;
@@ -428,8 +472,25 @@
                 const x2 = x1 + len * Math.cos(toRadians(ang));
                 const y2 = y1 + len * Math.sin(toRadians(ang));
 
-                // Add the branch segment as a path
-                svgElements.push(`<path d="M${x1},${y1} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                // Calculate control point for quadratic Bezier curve
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const segmentLength = Math.sqrt(dx * dx + dy * dy);
+                const curveIntensity = params.irregularity / 100 * Math.min(len, 50) * 0.5; // Adjust 0.5 for desired max curvature
+
+                let cpX = (x1 + x2) / 2;
+                let cpY = (y1 + y2) / 2;
+
+                if (segmentLength > 0 && curveIntensity > 0) {
+                    const normalX = -dy / segmentLength;
+                    const normalY = dx / segmentLength;
+                    const offset = (Math.random() - 0.5) * 2 * curveIntensity;
+                    cpX += normalX * offset;
+                    cpY += normalY * offset;
+                }
+
+                // Add the branch segment as a curved path
+                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
 
                 // Recursive calls for sub-branches
                 let randomAngleVariation = (Math.random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100
@@ -452,7 +513,7 @@
             }
 
             // Initial call to start drawing the tree
-            drawBranch(startX, startY, initialLength, -90, 0, params.trunkThickness); // Start pointing upwards, initial stroke width from slider
+            drawBranch(startX, startY, initialLength, -90, 0, initialStrokeWidth); // Start pointing upwards, initial stroke width from slider
 
             return svgElements.join('');
         }
@@ -464,7 +525,12 @@
          */
         function generateRecursiveBranchingTreeSVG(params) {
             let svgElements = [];
-            let initialLength = params.size * 1.5;
+            
+            // Scale initialLength and trunkThickness based on SVG height and size slider
+            const maxTreeHeightRatio = 0.8; // Tree can occupy up to 80% of SVG height
+            let initialLength = (params.svgHeight * maxTreeHeightRatio) * (params.size / 200);
+            let initialStrokeWidth = (params.svgHeight / 100) * (params.trunkThickness / 20); // Scale thickness relative to height and slider
+
             let initialAngle = -90; // Start pointing upwards
             let maxDepth = params.branchiness + 2; // 3 to 12 depth
             let startX = params.svgWidth / 2;
@@ -536,8 +602,25 @@
                 const x2 = x1 + len * Math.cos(toRadians(ang));
                 const y2 = y1 + len * Math.sin(toRadians(ang));
 
-                // Add the branch segment as a path
-                svgElements.push(`<path d="M${x1},${y1} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                // Calculate control point for quadratic Bezier curve
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const segmentLength = Math.sqrt(dx * dx + dy * dy);
+                const curveIntensity = params.irregularity / 100 * Math.min(len, 50) * 0.5; // Adjust 0.5 for desired max curvature
+
+                let cpX = (x1 + x2) / 2;
+                let cpY = (y1 + y2) / 2;
+
+                if (segmentLength > 0 && curveIntensity > 0) {
+                    const normalX = -dy / segmentLength;
+                    const normalY = dx / segmentLength;
+                    const offset = (Math.random() - 0.5) * 2 * curveIntensity;
+                    cpX += normalX * offset;
+                    cpY += normalY * offset;
+                }
+
+                // Add the branch segment as a curved path
+                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
 
                 // Determine number of new branches (1 to 3 + irregularity influence)
                 const numBranches = Math.floor(baseNumBranches + (Math.random() * (params.irregularity / 50)));
@@ -561,7 +644,7 @@
             }
 
             // Initial call to start drawing the tree
-            drawBranch(startX, startY, initialLength, initialAngle, 0, params.trunkThickness); // Initial stroke width from slider
+            drawBranch(startX, startY, initialLength, initialAngle, 0, initialStrokeWidth); // Initial stroke width from slider
 
             return svgElements.join('');
         }
@@ -578,6 +661,8 @@
         const trunkThicknessSlider = document.getElementById('trunkThicknessSlider');
         const leafSizeSlider = document.getElementById('leafSizeSlider');
         const leafinessSlider = document.getElementById('leafinessSlider');
+        const canvasWidthSlider = document.getElementById('canvasWidthSlider'); // New slider
+        const canvasHeightSlider = document.getElementById('canvasHeightSlider'); // New slider
         const backgroundCheckbox = document.getElementById('backgroundCheckbox');
         const sizeValueSpan = document.getElementById('sizeValue');
         const branchinessValueSpan = document.getElementById('branchinessValue');
@@ -586,6 +671,8 @@
         const trunkThicknessValueSpan = document.getElementById('trunkThicknessValue');
         const leafSizeValueSpan = document.getElementById('leafSizeValue');
         const leafinessValueSpan = document.getElementById('leafinessValue');
+        const canvasWidthValueSpan = document.getElementById('canvasWidthValue'); // New span
+        const canvasHeightValueSpan = document.getElementById('canvasHeightValue'); // New span
         const svgContainer = document.getElementById('svgContainer');
         const downloadBtn = document.getElementById('downloadBtn');
 
@@ -593,8 +680,15 @@
          * Renders the tree based on current UI control values.
          */
         function renderTree() {
-            const svgWidth = svgContainer.offsetWidth;
-            const svgHeight = svgContainer.offsetHeight;
+            // Get canvas dimensions from sliders and convert to pixels
+            const svgWidthInches = parseInt(canvasWidthSlider.value);
+            const svgHeightInches = parseInt(canvasHeightSlider.value);
+            const svgWidth = svgWidthInches * DPI;
+            const svgHeight = svgHeightInches * DPI;
+
+            // Update display spans for canvas dimensions
+            canvasWidthValueSpan.textContent = svgWidthInches;
+            canvasHeightValueSpan.textContent = svgHeightInches;
 
             const params = {
                 algorithm: algorithmSelect.value,
@@ -607,11 +701,11 @@
                 leafSize: parseInt(leafSizeSlider.value),
                 leafiness: parseInt(leafinessSlider.value),
                 showBackground: backgroundCheckbox.checked,
-                svgWidth: svgWidth,
-                svgHeight: svgHeight
+                svgWidth: svgWidth,   // Pass calculated pixel width
+                svgHeight: svgHeight  // Pass calculated pixel height
             };
 
-            // Update slider value displays
+            // Update other slider value displays
             sizeValueSpan.textContent = params.size;
             branchinessValueSpan.textContent = params.branchiness;
             shapeValueSpan.textContent = params.shape;
@@ -643,7 +737,7 @@
                 groundRect = `<rect x="0" y="${svgHeight - 100}" width="${svgWidth}" height="100" class="ground-rect"/>`; // Ground
             }
 
-            // Construct the full SVG string
+            // Construct the full SVG string with explicit width/height
             const fullSVG = `
                 <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
                     ${backgroundRect}
@@ -693,6 +787,8 @@
         trunkThicknessSlider.addEventListener('input', renderTree);
         leafSizeSlider.addEventListener('input', renderTree);
         leafinessSlider.addEventListener('input', renderTree);
+        canvasWidthSlider.addEventListener('input', renderTree); // New event listener
+        canvasHeightSlider.addEventListener('input', renderTree); // New event listener
         backgroundCheckbox.addEventListener('change', renderTree);
 
         // Listen for download button click
@@ -701,8 +797,13 @@
         // Initial render when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
             renderTree();
-            // Also re-render if the window is resized to adjust SVG dimensions
-            window.addEventListener('resize', renderTree);
+            // No longer need to listen for window resize for SVG dimensions,
+            // as they are now controlled by sliders.
+            // However, the svgContainer div itself might resize, so we should
+            // ensure the SVG fits its container for display.
+            // Let's keep the window resize listener to update the *display* size of the SVG container,
+            // but the internal SVG dimensions will be from the sliders.
+            window.addEventListener('resize', renderTree); // Still useful for responsive container
         });
     </script>
 </body>
