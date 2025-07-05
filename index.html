@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SVG Tree Generator</title>
+    <!-- Tailwind CSS CDN for responsive and modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to ensure font and basic layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for better content flow */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        /* Main container styling */
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            margin: 20px;
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        /* SVG display area styling */
+        #svgContainer {
+            min-height: 400px;
+            background-color: #e0f2f7; /* Light blue for sky */
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative; /* For ground rectangle positioning */
+        }
+        #svgContainer svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Ground rectangle within SVG */
+        .ground-rect {
+            fill: #8B4513; /* SaddleBrown */
+        }
+        /* Control panel styling */
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: end; /* Align items to the bottom */
+        }
+        /* Slider group styling */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        /* Checkbox group styling */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 40px; /* Align with other controls */
+        }
+        /* Slider track and thumb styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d1d5db; /* Light gray track */
+            border-radius: 5px;
+            outline: none;
+            transition: opacity .2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #2563eb; /* Blue thumb */
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #2563eb;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        /* Dropdown styling */
+        select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background-color: white;
+            font-size: 1rem;
+            min-height: 40px; /* Ensure consistent height */
+            cursor: pointer;
+        }
+        /* Button styling */
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            background-color: #10B981; /* Green */
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            background-color: #059669; /* Darker green on hover */
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start min-h-screen p-4 bg-gray-100">
+    <div class="container">
+        <!-- Header Section -->
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-4">Interactive SVG Tree Generator</h1>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <!-- Algorithm Selection -->
+            <div class="slider-group">
+                <label for="algorithmSelect" class="text-sm font-medium text-gray-700">Algorithm:</label>
+                <select id="algorithmSelect" class="w-full">
+                    <option value="Fractal Tree">Fractal Tree</option>
+                    <option value="L-system">L-system</option>
+                    <option value="Recursive Branching">Recursive Branching</option>
+                </select>
+            </div>
+
+            <!-- Tree Type Selection -->
+            <div class="slider-group">
+                <label for="treeTypeSelect" class="text-sm font-medium text-gray-700">Tree Type:</label>
+                <select id="treeTypeSelect" class="w-full">
+                    <option value="Default">Default</option>
+                    <option value="Evergreen">Evergreen</option>
+                    <option value="Deciduous">Deciduous</option>
+                    <option value="Leafy">Leafy</option>
+                    <option value="Branchy">Branchy</option>
+                    <option value="Weeping">Weeping</option>
+                </select>
+            </div>
+
+            <!-- Size Slider -->
+            <div class="slider-group">
+                <label for="sizeSlider" class="text-sm font-medium text-gray-700">Size: <span id="sizeValue">100</span></label>
+                <input type="range" id="sizeSlider" min="20" max="200" value="100">
+            </div>
+
+            <!-- Branchiness Slider -->
+            <div class="slider-group">
+                <label for="branchinessSlider" class="text-sm font-medium text-gray-700">Branchiness: <span id="branchinessValue">5</span></label>
+                <input type="range" id="branchinessSlider" min="1" max="10" value="5">
+            </div>
+
+            <!-- Shape Slider (Columnar to Circular) -->
+            <div class="slider-group">
+                <label for="shapeSlider" class="text-sm font-medium text-gray-700">Shape (Columnar to Circular): <span id="shapeValue">50</span></label>
+                <input type="range" id="shapeSlider" min="0" max="100" value="50">
+            </div>
+
+            <!-- Irregularity Slider -->
+            <div class="slider-group">
+                <label for="irregularitySlider" class="text-sm font-medium text-gray-700">Irregularity: <span id="irregularityValue">50</span></label>
+                <input type="range" id="irregularitySlider" min="0" max="100" value="50">
+            </div>
+
+            <!-- Trunk Thickness Slider -->
+            <div class="slider-group">
+                <label for="trunkThicknessSlider" class="text-sm font-medium text-gray-700">Trunk Thickness: <span id="trunkThicknessValue">50</span></label>
+                <input type="range" id="trunkThicknessSlider" min="2" max="100" value="50">
+            </div>
+
+            <!-- Leaf Size Slider -->
+            <div class="slider-group">
+                <label for="leafSizeSlider" class="text-sm font-medium text-gray-700">Leaf Size: <span id="leafSizeValue">50</span></label>
+                <input type="range" id="leafSizeSlider" min="0" max="100" value="50">
+            </div>
+
+            <!-- Leafiness Slider -->
+            <div class="slider-group">
+                <label for="leafinessSlider" class="text-sm font-medium text-gray-700">Leafiness: <span id="leafinessValue">50</span></label>
+                <input type="range" id="leafinessSlider" min="0" max="100" value="50">
+            </div>
+
+            <!-- Background Checkbox -->
+            <div class="checkbox-group">
+                <input type="checkbox" id="backgroundCheckbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked>
+                <label for="backgroundCheckbox" class="text-sm font-medium text-gray-700">Show Background (Sky & Ground)</label>
+            </div>
+
+            <!-- Download Button -->
+            <button id="downloadBtn" class="col-span-full md:col-span-1 mt-4">Download SVG</button>
+        </div>
+
+        <!-- SVG Display Area -->
+        <div id="svgContainer" class="w-full h-96 border border-gray-300 rounded-lg shadow-inner">
+            <!-- SVG content will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        // --- Utility Functions ---
+
+        /**
+         * Converts degrees to radians.
+         * @param {number} degrees - Angle in degrees.
+         * @returns {number} Angle in radians.
+         */
+        function toRadians(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        // --- Tree Generation Algorithms ---
+
+        /**
+         * Generates an L-system tree as an SVG string.
+         * @param {object} params - Parameters for tree generation.
+         * @returns {string} SVG string representing the L-system tree.
+         */
+        function generateLSystemTreeSVG(params) {
+            let axiom = 'X';
+            let rules = {
+                'X': 'F+[[X]-X]-F[-FX]+X',
+                'F': 'FF'
+            };
+            let iterations = Math.floor(params.branchiness / 2) + 3; // 3 to 8 iterations
+            let angle = 25 + (params.irregularity / 2); // 25 to 75 degrees
+            let initialLength = params.size;
+            let startX = params.svgWidth / 2;
+            let startY = params.svgHeight - 50;
+
+            // Leaf parameters
+            const baseLeafRadius = 3; // Base radius for leaves
+            const leafRadiusFactor = params.leafSize / 100; // 0 to 1
+            const leafThresholdLength = params.leafiness / 100 * 30 + 5; // 5 to 35, branches shorter than this get leaves
+
+            // Tree type specific adjustments
+            let leafColor = "#228B22"; // Default dark green
+            switch (params.treeType) {
+                case 'Evergreen':
+                    angle = 15 + (params.irregularity / 4); // Sharper angle
+                    rules['X'] = 'F[+X]F[-X]+X'; // More conical rule
+                    leafColor = "#006400"; // Darker green
+                    break;
+                case 'Deciduous':
+                    angle = 30 + (params.irregularity / 3); // Wider angle
+                    rules['X'] = 'F+[[X]-X]-F[-FX]+X'; // Default rule, but can be varied
+                    leafColor = "#6B8E23"; // Olive green
+                    break;
+                case 'Leafy':
+                    iterations = Math.min(8, iterations + 2); // More iterations for more branches
+                    initialLength *= 0.8; // Shorter branches
+                    break;
+                case 'Branchy':
+                    iterations = Math.max(3, iterations - 1); // Fewer iterations, thicker branches
+                    initialLength *= 1.2; // Longer branches
+                    break;
+                case 'Weeping':
+                    // Modify rules to bias angles downwards
+                    rules['X'] = 'F+[[X]-X]-F[-FX]+X'; // Base rule
+                    // This is harder to do purely with L-system rules without complex parameterization.
+                    // For simplicity, we'll rely on global angle adjustments or post-processing if needed.
+                    // For now, it will look like a regular L-system tree.
+                    break;
+            }
+
+            // Adjust angle based on shape (Columnar to Circular)
+            angle += (params.shape - 50) * 0.2; // -10 to +10 adjustment
+
+            let currentString = axiom;
+            for (let i = 0; i < iterations; i++) {
+                let nextString = '';
+                for (let j = 0; j < currentString.length; j++) {
+                    const char = currentString[j];
+                    nextString += rules[char] ? rules[char] : char;
+                }
+                currentString = nextString;
+            }
+
+            let svgPaths = [];
+            let x = startX;
+            let y = startY;
+            let currentAngle = -90; // Start pointing upwards
+            let stack = [];
+            let currentStrokeWidth = params.trunkThickness; // Initial branch thickness from slider
+
+            for (let i = 0; i < currentString.length; i++) {
+                const char = currentString[i];
+                const radians = toRadians(currentAngle);
+                // Branches get shorter and thinner with depth (stack.length represents depth)
+                let newLength = initialLength * Math.pow(0.7, stack.length);
+                let branchStrokeWidth = currentStrokeWidth * Math.pow(0.7, stack.length);
+
+                // Apply irregularity to length
+                newLength *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+
+                switch (char) {
+                    case 'F': // Draw forward
+                        const x2 = x + newLength * Math.cos(radians);
+                        const y2 = y + newLength * Math.sin(radians);
+                        svgPaths.push(`<path d="M${x},${y} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
+                        
+                        // Add leaves if conditions met and not 'Branchy' type
+                        if (newLength < leafThresholdLength && params.treeType !== 'Branchy') {
+                            svgPaths.push(`<circle cx="${x2}" cy="${y2}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                        }
+                        x = x2;
+                        y = y2;
+                        break;
+                    case '+': // Turn right
+                        currentAngle += angle * (1 + (Math.random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
+                        break;
+                    case '-': // Turn left
+                        currentAngle -= angle * (1 + (Math.random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
+                        break;
+                    case '[': // Push state
+                        stack.push({ x, y, angle: currentAngle, strokeWidth: currentStrokeWidth });
+                        break;
+                    case ']': // Pop state
+                        const prevState = stack.pop();
+                        x = prevState.x;
+                        y = prevState.y;
+                        currentAngle = prevState.angle;
+                        currentStrokeWidth = prevState.strokeWidth;
+                        break;
+                    case 'X': // Non-drawing symbol
+                    case 'Y': // Another non-drawing symbol
+                        break;
+                }
+            }
+            return svgPaths.join('');
+        }
+
+        /**
+         * Generates a Fractal Tree as an SVG string.
+         * @param {object} params - Parameters for tree generation.
+         * @returns {string} SVG string representing the fractal tree.
+         */
+        function generateFractalTreeSVG(params) {
+            let svgElements = [];
+            let initialLength = params.size * 1.2;
+            let baseBranchAngle = 25;
+            let maxDepth = params.branchiness + 3; // 4 to 13 depth
+            let startX = params.svgWidth / 2;
+            let startY = params.svgHeight - 50;
+
+            // Leaf parameters
+            const baseLeafRadius = 3; // Base radius for leaves
+            const leafRadiusFactor = params.leafSize / 100; // 0 to 1
+            const leafThresholdLength = params.leafiness / 100 * 30 + 5; // 5 to 35, branches shorter than this get leaves
+
+            // Tree type specific adjustments
+            let leafColor = "#228B22"; // Default dark green
+            let lengthReductionFactor = 0.75; // Default length reduction
+            let angleSpreadFactor = 1; // Default angle spread
+
+            switch (params.treeType) {
+                case 'Evergreen':
+                    baseBranchAngle = 15 + (params.irregularity / 5);
+                    lengthReductionFactor = 0.7; // Tends to be more dense
+                    leafColor = "#006400"; // Darker green
+                    break;
+                case 'Deciduous':
+                    baseBranchAngle = 30 + (params.irregularity / 4);
+                    lengthReductionFactor = 0.8; // More open
+                    leafColor = "#6B8E23"; // Olive green
+                    break;
+                case 'Leafy':
+                    maxDepth = Math.min(13, maxDepth + 2); // More depth for more leaves
+                    initialLength *= 0.7; // Shorter branches
+                    break;
+                case 'Branchy':
+                    maxDepth = Math.max(4, maxDepth - 1); // Less depth, thicker branches
+                    initialLength *= 1.3; // Longer branches
+                    break;
+                case 'Weeping':
+                    // Bias angles downwards
+                    angleSpreadFactor = 1.2; // Wider spread
+                    baseBranchAngle = 10; // Smaller base angle
+                    break;
+            }
+
+            // Adjust angle based on shape (Columnar to Circular)
+            baseBranchAngle += (params.shape - 50) * 0.2; // -10 to +10 adjustment
+
+            /**
+             * Recursive function to draw branches.
+             * @param {number} x1 - Starting X coordinate.
+             * @param {number} y1 - Starting Y coordinate.
+             * @param {number} len - Length of the current branch.
+             * @param {number} ang - Angle of the current branch in degrees.
+             * @param {number} currentDepth - Current recursion depth.
+             * @param {number} strokeWidth - Stroke width of the current branch.
+             */
+            function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
+                if (currentDepth > maxDepth || len < 2) { // Base case: stop recursion
+                    // Add leaves if conditions met and not 'Branchy' type
+                    if (len < leafThresholdLength && params.treeType !== 'Branchy') {
+                        svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                    }
+                    return;
+                }
+
+                // Apply irregularity to length
+                len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+
+                const x2 = x1 + len * Math.cos(toRadians(ang));
+                const y2 = y1 + len * Math.sin(toRadians(ang));
+
+                // Add the branch segment as a path
+                svgElements.push(`<path d="M${x1},${y1} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+
+                // Recursive calls for sub-branches
+                let randomAngleVariation = (Math.random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100
+                let newLen = len * lengthReductionFactor;
+                let newStrokeWidth = strokeWidth * 0.8;
+
+                // Weeping tree specific angle adjustment
+                let weepingBias = 0;
+                if (params.treeType === 'Weeping') {
+                    weepingBias = currentDepth * 2; // More bias for deeper branches
+                }
+
+                drawBranch(x2, y2, newLen, ang - baseBranchAngle * angleSpreadFactor + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth);
+                drawBranch(x2, y2, newLen, ang + baseBranchAngle * angleSpreadFactor + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth);
+
+                // Optionally add a third branch with lower probability for irregularity
+                if (Math.random() > 0.7 - (params.irregularity / 500)) { // Higher irregularity, higher chance of third branch
+                     drawBranch(x2, y2, newLen * 0.8, ang + (Math.random() * (baseBranchAngle * angleSpreadFactor * 0.5) - (baseBranchAngle * angleSpreadFactor * 0.25)) + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth * 0.7);
+                }
+            }
+
+            // Initial call to start drawing the tree
+            drawBranch(startX, startY, initialLength, -90, 0, params.trunkThickness); // Start pointing upwards, initial stroke width from slider
+
+            return svgElements.join('');
+        }
+
+        /**
+         * Generates a Recursive Branching tree as an SVG string.
+         * @param {object} params - Parameters for tree generation.
+         * @returns {string} SVG string representing the recursive branching tree.
+         */
+        function generateRecursiveBranchingTreeSVG(params) {
+            let svgElements = [];
+            let initialLength = params.size * 1.5;
+            let initialAngle = -90; // Start pointing upwards
+            let maxDepth = params.branchiness + 2; // 3 to 12 depth
+            let startX = params.svgWidth / 2;
+            let startY = params.svgHeight - 50;
+
+            // Leaf parameters
+            const baseLeafRadius = 3; // Base radius for leaves
+            const leafRadiusFactor = params.leafSize / 100; // 0 to 1
+            const leafThresholdLength = params.leafiness / 100 * 30 + 5; // 5 to 35, branches shorter than this get leaves
+
+            // Tree type specific adjustments
+            let leafColor = "#32CD32"; // Default lime green
+            let baseNumBranches = 2; // Default number of branches per split
+            let baseAngleSpread = 40; // Default angle spread
+            let lenReductionFactor = 0.6 + Math.random() * 0.2; // Default length reduction
+
+            switch (params.treeType) {
+                case 'Evergreen':
+                    baseAngleSpread = 25 + (params.irregularity / 5);
+                    lenReductionFactor = 0.65;
+                    leafColor = "#006400";
+                    break;
+                case 'Deciduous':
+                    baseAngleSpread = 50 + (params.irregularity / 4);
+                    lenReductionFactor = 0.75;
+                    leafColor = "#6B8E23";
+                    break;
+                case 'Leafy':
+                    maxDepth = Math.min(12, maxDepth + 2);
+                    initialLength *= 0.8;
+                    baseNumBranches = 3;
+                    break;
+                case 'Branchy':
+                    maxDepth = Math.max(3, maxDepth - 1);
+                    initialLength *= 1.2;
+                    baseNumBranches = 1; // Fewer, thicker branches
+                    break;
+                case 'Weeping':
+                    // Bias angles downwards significantly
+                    initialAngle = -70; // Start slightly tilted
+                    baseAngleSpread = 60; // Wider spread
+                    break;
+            }
+
+            // Adjust angle spread based on shape (Columnar to Circular)
+            baseAngleSpread += (params.shape - 50) * 0.3; // -15 to +15 adjustment
+
+            /**
+             * Recursive function to draw branches.
+             * @param {number} x1 - Starting X coordinate.
+             * @param {number} y1 - Starting Y coordinate.
+             * @param {number} len - Length of the current branch.
+             * @param {number} ang - Angle of the current branch in degrees.
+             * @param {number} currentDepth - Current recursion depth.
+             * @param {number} strokeWidth - Stroke width of the current branch.
+             */
+            function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
+                if (currentDepth > maxDepth || len < 3) { // Base case: stop if too deep or too short
+                    // Add leaves if conditions met and not 'Branchy' type
+                    if (len < leafThresholdLength && params.treeType !== 'Branchy') {
+                        svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                    }
+                    return;
+                }
+
+                // Apply irregularity to length
+                len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+
+                const x2 = x1 + len * Math.cos(toRadians(ang));
+                const y2 = y1 + len * Math.sin(toRadians(ang));
+
+                // Add the branch segment as a path
+                svgElements.push(`<path d="M${x1},${y1} L${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+
+                // Determine number of new branches (1 to 3 + irregularity influence)
+                const numBranches = Math.floor(baseNumBranches + (Math.random() * (params.irregularity / 50)));
+                const newLenReduction = lenReductionFactor * (1 + (Math.random() - 0.5) * (params.irregularity / 150)); // Irregularity in length reduction
+                const newStrokeWidth = strokeWidth * (0.6 + Math.random() * 0.2);
+
+                for (let i = 0; i < numBranches; i++) {
+                    // Calculate angle for each new branch with irregularity
+                    let newAngle = ang + (Math.random() * baseAngleSpread - baseAngleSpread / 2) * (1 + (params.irregularity / 100));
+
+                    // Weeping tree specific angle adjustment
+                    if (params.treeType === 'Weeping') {
+                        newAngle += currentDepth * 5; // Bias downwards more for deeper branches
+                    } else {
+                        // Slight upward bias for non-weeping trees
+                        newAngle -= (currentDepth * 0.5);
+                    }
+
+                    drawBranch(x2, y2, len * newLenReduction, newAngle, currentDepth + 1, newStrokeWidth);
+                }
+            }
+
+            // Initial call to start drawing the tree
+            drawBranch(startX, startY, initialLength, initialAngle, 0, params.trunkThickness); // Initial stroke width from slider
+
+            return svgElements.join('');
+        }
+
+        // --- Main Application Logic ---
+
+        // Get references to UI elements
+        const algorithmSelect = document.getElementById('algorithmSelect');
+        const treeTypeSelect = document.getElementById('treeTypeSelect');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const branchinessSlider = document.getElementById('branchinessSlider');
+        const shapeSlider = document.getElementById('shapeSlider');
+        const irregularitySlider = document.getElementById('irregularitySlider');
+        const trunkThicknessSlider = document.getElementById('trunkThicknessSlider');
+        const leafSizeSlider = document.getElementById('leafSizeSlider');
+        const leafinessSlider = document.getElementById('leafinessSlider');
+        const backgroundCheckbox = document.getElementById('backgroundCheckbox');
+        const sizeValueSpan = document.getElementById('sizeValue');
+        const branchinessValueSpan = document.getElementById('branchinessValue');
+        const shapeValueSpan = document.getElementById('shapeValue');
+        const irregularityValueSpan = document.getElementById('irregularityValue');
+        const trunkThicknessValueSpan = document.getElementById('trunkThicknessValue');
+        const leafSizeValueSpan = document.getElementById('leafSizeValue');
+        const leafinessValueSpan = document.getElementById('leafinessValue');
+        const svgContainer = document.getElementById('svgContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        /**
+         * Renders the tree based on current UI control values.
+         */
+        function renderTree() {
+            const svgWidth = svgContainer.offsetWidth;
+            const svgHeight = svgContainer.offsetHeight;
+
+            const params = {
+                algorithm: algorithmSelect.value,
+                treeType: treeTypeSelect.value,
+                size: parseInt(sizeSlider.value),
+                branchiness: parseInt(branchinessSlider.value),
+                shape: parseInt(shapeSlider.value),
+                irregularity: parseInt(irregularitySlider.value),
+                trunkThickness: parseInt(trunkThicknessSlider.value),
+                leafSize: parseInt(leafSizeSlider.value),
+                leafiness: parseInt(leafinessSlider.value),
+                showBackground: backgroundCheckbox.checked,
+                svgWidth: svgWidth,
+                svgHeight: svgHeight
+            };
+
+            // Update slider value displays
+            sizeValueSpan.textContent = params.size;
+            branchinessValueSpan.textContent = params.branchiness;
+            shapeValueSpan.textContent = params.shape;
+            irregularityValueSpan.textContent = params.irregularity;
+            trunkThicknessValueSpan.textContent = params.trunkThickness;
+            leafSizeValueSpan.textContent = params.leafSize;
+            leafinessValueSpan.textContent = params.leafiness;
+
+            let treeSVGContent = '';
+            switch (params.algorithm) {
+                case 'L-system':
+                    treeSVGContent = generateLSystemTreeSVG(params);
+                    break;
+                case 'Fractal Tree':
+                    treeSVGContent = generateFractalTreeSVG(params);
+                    break;
+                case 'Recursive Branching':
+                    treeSVGContent = generateRecursiveBranchingTreeSVG(params);
+                    break;
+                default:
+                    treeSVGContent = '<!-- Select an algorithm -->';
+            }
+
+            // Conditionally include background and ground
+            let backgroundRect = '';
+            let groundRect = '';
+            if (params.showBackground) {
+                backgroundRect = `<rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="#ADD8E6"/>`; // Sky background
+                groundRect = `<rect x="0" y="${svgHeight - 100}" width="${svgWidth}" height="100" class="ground-rect"/>`; // Ground
+            }
+
+            // Construct the full SVG string
+            const fullSVG = `
+                <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+                    ${backgroundRect}
+                    ${groundRect}
+                    ${treeSVGContent}
+                </svg>
+            `;
+
+            svgContainer.innerHTML = fullSVG;
+        }
+
+        /**
+         * Downloads the current SVG content as an .svg file.
+         */
+        function downloadSVG() {
+            const svgElement = svgContainer.querySelector('svg');
+            if (!svgElement) {
+                console.error("No SVG element found to download.");
+                return;
+            }
+
+            // Get the innerHTML of the SVG element
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+
+            // Create a Blob from the SVG string
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+
+            // Create a download link
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'generated_tree.svg'; // Default filename
+            document.body.appendChild(a); // Append to body to make it clickable
+            a.click(); // Programmatically click the link to trigger download
+            document.body.removeChild(a); // Clean up the temporary link
+            URL.revokeObjectURL(a.href); // Release the object URL
+        }
+
+        // --- Event Listeners ---
+
+        // Listen for changes on all controls to re-render the tree
+        algorithmSelect.addEventListener('change', renderTree);
+        treeTypeSelect.addEventListener('change', renderTree);
+        sizeSlider.addEventListener('input', renderTree);
+        branchinessSlider.addEventListener('input', renderTree);
+        shapeSlider.addEventListener('input', renderTree);
+        irregularitySlider.addEventListener('input', renderTree);
+        trunkThicknessSlider.addEventListener('input', renderTree);
+        leafSizeSlider.addEventListener('input', renderTree);
+        leafinessSlider.addEventListener('input', renderTree);
+        backgroundCheckbox.addEventListener('change', renderTree);
+
+        // Listen for download button click
+        downloadBtn.addEventListener('click', downloadSVG);
+
+        // Initial render when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTree();
+            // Also re-render if the window is resized to adjust SVG dimensions
+            window.addEventListener('resize', renderTree);
+        });
+    </script>
+</body>
+</html>
