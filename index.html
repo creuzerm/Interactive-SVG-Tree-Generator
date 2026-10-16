@@ -243,53 +243,6 @@
             return degrees * Math.PI / 180;
         }
 
-        /**
-         * Calculates Cartesian endpoint coordinates from polar coordinates.
-         * @param {number} x - Starting X coordinate.
-         * @param {number} y - Starting Y coordinate.
-         * @param {number} length - Length of the segment.
-         * @param {number} angleInDegrees - Angle in degrees.
-         * @returns {object} Object containing x and y coordinates.
-         */
-        function calculateEndpoint(x, y, length, angleInDegrees) {
-            const radians = toRadians(angleInDegrees);
-            return {
-                x: x + length * Math.cos(radians),
-                y: y + length * Math.sin(radians)
-            };
-        }
-
-        /**
-         * Clamps recursion depth to prevent call stack overflows.
-         * @param {number} depth - Desired depth.
-         * @param {number} maxAllowed - Maximum allowed depth (defaults to 12).
-         * @returns {number} Clamped depth.
-         */
-        function clampDepth(depth, maxAllowed = 12) {
-            return Math.min(depth, maxAllowed);
-        }
-
-        /**
-         * Clamps wind sway angle within a boundary.
-         * @param {number} angle - Input angle.
-         * @param {number} minAngle - Minimum allowed angle.
-         * @param {number} maxAngle - Maximum allowed angle.
-         * @returns {number} Clamped angle.
-         */
-        function clampWindSway(angle, minAngle, maxAngle) {
-            return Math.max(minAngle, Math.min(maxAngle, angle));
-        }
-
-        /**
-         * Calculates tapered stroke width.
-         * @param {number} currentThickness - Current thickness.
-         * @param {number} taperRatio - Taper ratio multiplier.
-         * @returns {number} New thickness.
-         */
-        function calculateTrunkTaper(currentThickness, taperRatio) {
-            return currentThickness * taperRatio;
-        }
-
         // DPI for converting inches to pixels (standard web DPI)
         const DPI = 96;
 
@@ -384,9 +337,8 @@
 
                 switch (char) {
                     case 'F': // Draw forward
-                        const endpoint = calculateEndpoint(x, y, newLength, currentAngle);
-                        const x2 = endpoint.x;
-                        const y2 = endpoint.y;
+                        const x2 = x + newLength * Math.cos(radians);
+                        const y2 = y + newLength * Math.sin(radians);
 
                         // Calculate control point for quadratic Bezier curve
                         const dx = x2 - x;
@@ -496,8 +448,6 @@
             // Adjust angle based on shape (Columnar to Circular)
             baseBranchAngle += (params.shape - 50) * 0.2; // -10 to +10 adjustment
 
-            maxDepth = clampDepth(maxDepth, 12);
-
             /**
              * Recursive function to draw branches.
              * @param {number} x1 - Starting X coordinate.
@@ -519,9 +469,8 @@
                 // Apply irregularity to length
                 len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
 
-                const endpoint = calculateEndpoint(x1, y1, len, ang);
-                const x2 = endpoint.x;
-                const y2 = endpoint.y;
+                const x2 = x1 + len * Math.cos(toRadians(ang));
+                const y2 = y1 + len * Math.sin(toRadians(ang));
 
                 // Calculate control point for quadratic Bezier curve
                 const dx = x2 - x1;
@@ -546,7 +495,7 @@
                 // Recursive calls for sub-branches
                 let randomAngleVariation = (Math.random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100
                 let newLen = len * lengthReductionFactor;
-                let newStrokeWidth = calculateTrunkTaper(strokeWidth, 0.8);
+                let newStrokeWidth = strokeWidth * 0.8;
 
                 // Weeping tree specific angle adjustment
                 let weepingBias = 0;
@@ -629,8 +578,6 @@
             // Adjust angle spread based on shape (Columnar to Circular)
             baseAngleSpread += (params.shape - 50) * 0.3; // -15 to +15 adjustment
 
-            maxDepth = clampDepth(maxDepth, 12);
-
             /**
              * Recursive function to draw branches.
              * @param {number} x1 - Starting X coordinate.
@@ -652,9 +599,8 @@
                 // Apply irregularity to length
                 len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
 
-                const endpoint = calculateEndpoint(x1, y1, len, ang);
-                const x2 = endpoint.x;
-                const y2 = endpoint.y;
+                const x2 = x1 + len * Math.cos(toRadians(ang));
+                const y2 = y1 + len * Math.sin(toRadians(ang));
 
                 // Calculate control point for quadratic Bezier curve
                 const dx = x2 - x1;
@@ -679,7 +625,7 @@
                 // Determine number of new branches (1 to 3 + irregularity influence)
                 const numBranches = Math.floor(baseNumBranches + (Math.random() * (params.irregularity / 50)));
                 const newLenReduction = lenReductionFactor * (1 + (Math.random() - 0.5) * (params.irregularity / 150)); // Irregularity in length reduction
-                const newStrokeWidth = calculateTrunkTaper(strokeWidth, 0.6 + Math.random() * 0.2);
+                const newStrokeWidth = strokeWidth * (0.6 + Math.random() * 0.2);
 
                 for (let i = 0; i < numBranches; i++) {
                     // Calculate angle for each new branch with irregularity
