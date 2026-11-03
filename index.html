@@ -229,6 +229,12 @@
                 <label for="backgroundCheckbox" class="text-sm font-medium text-gray-700">Show Background (Sky & Ground)</label>
             </div>
 
+            <!-- Seed Input -->
+            <div class="slider-group">
+                <label for="seedInput" class="text-sm font-medium text-gray-700">Seed:</label>
+                <input type="number" id="seedInput" value="12345" class="w-full p-2 border border-gray-300 rounded">
+            </div>
+
             <!-- Download Button -->
             <button id="downloadBtn" class="col-span-full md:col-span-1 mt-4">Download SVG</button>
         </div>
@@ -240,6 +246,18 @@
     </div>
 
     <script>
+        // --- PRNG ---
+        let seedState = 12345;
+        function seedPRNG(seed) {
+            seedState = seed;
+        }
+        function random() {
+            let t = seedState += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+
         // --- Utility Functions ---
 
         /**
@@ -249,6 +267,42 @@
          */
         function toRadians(degrees) {
             return degrees * Math.PI / 180;
+        }
+
+        /**
+         * Interpolates between two hex colors.
+         * @param {string} color1 - Starting color in hex (e.g., "#8B4513").
+         * @param {string} color2 - Ending color in hex (e.g., "#228B22").
+         * @param {number} factor - Interpolation factor between 0 and 1.
+         * @returns {string} Interpolated color in hex.
+         */
+        function interpolateColor(color1, color2, factor) {
+            if (arguments.length < 3) { factor = 0.5; }
+
+            // Remove the hash if it exists
+            color1 = color1.replace(/^#/, '');
+            color2 = color2.replace(/^#/, '');
+
+            let c1 = color1.match(/.{1,2}/g);
+            if (color1.length === 3) { // shorthand hex
+                c1 = [color1[0]+color1[0], color1[1]+color1[1], color1[2]+color1[2]];
+            }
+
+            let c2 = color2.match(/.{1,2}/g);
+            if (color2.length === 3) { // shorthand hex
+                c2 = [color2[0]+color2[0], color2[1]+color2[1], color2[2]+color2[2]];
+            }
+
+            let hex = function(x) {
+                x = x.toString(16);
+                return (x.length == 1) ? '0' + x : x;
+            };
+
+            let r = Math.ceil(parseInt(c1[0], 16) * (1 - factor) + parseInt(c2[0], 16) * factor);
+            let g = Math.ceil(parseInt(c1[1], 16) * (1 - factor) + parseInt(c2[1], 16) * factor);
+            let b = Math.ceil(parseInt(c1[2], 16) * (1 - factor) + parseInt(c2[2], 16) * factor);
+
+            return "#" + hex(r) + hex(g) + hex(b);
         }
 
         // DPI for converting inches to pixels (standard web DPI)
@@ -341,7 +395,7 @@
                 let branchStrokeWidth = segmentStrokeWidth * Math.pow(0.7, stack.length);
 
                 // Apply irregularity to length
-                newLength *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+                newLength *= (1 + (random() - 0.5) * (params.irregularity / 100));
 
                 switch (char) {
                     case 'F': // Draw forward
@@ -361,12 +415,13 @@
                         if (segmentLength > 0 && curveIntensity > 0) {
                             const normalX = -dy / segmentLength; // Perpendicular vector component
                             const normalY = dx / segmentLength; // Perpendicular vector component
-                            const offset = (Math.random() - 0.5) * 2 * curveIntensity; // Random offset +/- curveIntensity
+                            const offset = (random() - 0.5) * 2 * curveIntensity; // Random offset +/- curveIntensity
                             cpX += normalX * offset;
                             cpY += normalY * offset;
                         }
                         
-                        svgPaths.push(`<path d="M${x},${y} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
+                        let depthFactor = Math.min(1, stack.length / iterations);
+                        svgPaths.push(`<path d="M${x},${y} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
                         
                         // Add leaves if conditions met and not 'Branchy' type
                         if (newLength < leafThresholdLength && params.treeType !== 'Branchy') {
@@ -376,10 +431,10 @@
                         y = y2;
                         break;
                     case '+': // Turn right
-                        currentAngle += angle * (1 + (Math.random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
+                        currentAngle += angle * (1 + (random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
                         break;
                     case '-': // Turn left
-                        currentAngle -= angle * (1 + (Math.random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
+                        currentAngle -= angle * (1 + (random() - 0.5) * (params.irregularity / 50)); // Apply irregularity to angle
                         break;
                     case '[': // Push state
                         stack.push({ x, y, angle: currentAngle, strokeWidth: segmentStrokeWidth });
@@ -475,7 +530,7 @@
                 }
 
                 // Apply irregularity to length
-                len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+                len *= (1 + (random() - 0.5) * (params.irregularity / 100));
 
                 const x2 = x1 + len * Math.cos(toRadians(ang));
                 const y2 = y1 + len * Math.sin(toRadians(ang));
@@ -492,16 +547,17 @@
                 if (segmentLength > 0 && curveIntensity > 0) {
                     const normalX = -dy / segmentLength;
                     const normalY = dx / segmentLength;
-                    const offset = (Math.random() - 0.5) * 2 * curveIntensity;
+                    const offset = (random() - 0.5) * 2 * curveIntensity;
                     cpX += normalX * offset;
                     cpY += normalY * offset;
                 }
 
+                let depthFactor = Math.min(1, currentDepth / maxDepth);
                 // Add the branch segment as a curved path
-                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
 
                 // Recursive calls for sub-branches
-                let randomAngleVariation = (Math.random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100
+                let randomAngleVariation = (random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100
                 let newLen = len * lengthReductionFactor;
                 let newStrokeWidth = strokeWidth * 0.8;
 
@@ -515,8 +571,8 @@
                 drawBranch(x2, y2, newLen, ang + baseBranchAngle * angleSpreadFactor + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth);
 
                 // Optionally add a third branch with lower probability for irregularity
-                if (Math.random() > 0.7 - (params.irregularity / 500)) { // Higher irregularity, higher chance of third branch
-                     drawBranch(x2, y2, newLen * 0.8, ang + (Math.random() * (baseBranchAngle * angleSpreadFactor * 0.5) - (baseBranchAngle * angleSpreadFactor * 0.25)) + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth * 0.7);
+                if (random() > 0.7 - (params.irregularity / 500)) { // Higher irregularity, higher chance of third branch
+                     drawBranch(x2, y2, newLen * 0.8, ang + (random() * (baseBranchAngle * angleSpreadFactor * 0.5) - (baseBranchAngle * angleSpreadFactor * 0.25)) + randomAngleVariation + weepingBias, currentDepth + 1, newStrokeWidth * 0.7);
                 }
             }
 
@@ -553,7 +609,7 @@
             let leafColor = "#32CD32"; // Default lime green
             let baseNumBranches = 2; // Default number of branches per split
             let baseAngleSpread = 40; // Default angle spread
-            let lenReductionFactor = 0.6 + Math.random() * 0.2; // Default length reduction
+            let lenReductionFactor = 0.6 + random() * 0.2; // Default length reduction
 
             switch (params.treeType) {
                 case 'Evergreen':
@@ -605,7 +661,7 @@
                 }
 
                 // Apply irregularity to length
-                len *= (1 + (Math.random() - 0.5) * (params.irregularity / 100));
+                len *= (1 + (random() - 0.5) * (params.irregularity / 100));
 
                 const x2 = x1 + len * Math.cos(toRadians(ang));
                 const y2 = y1 + len * Math.sin(toRadians(ang));
@@ -622,22 +678,23 @@
                 if (segmentLength > 0 && curveIntensity > 0) {
                     const normalX = -dy / segmentLength;
                     const normalY = dx / segmentLength;
-                    const offset = (Math.random() - 0.5) * 2 * curveIntensity;
+                    const offset = (random() - 0.5) * 2 * curveIntensity;
                     cpX += normalX * offset;
                     cpY += normalY * offset;
                 }
 
+                let depthFactor = Math.min(1, currentDepth / maxDepth);
                 // Add the branch segment as a curved path
-                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="brown" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
 
                 // Determine number of new branches (1 to 3 + irregularity influence)
-                const numBranches = Math.floor(baseNumBranches + (Math.random() * (params.irregularity / 50)));
-                const newLenReduction = lenReductionFactor * (1 + (Math.random() - 0.5) * (params.irregularity / 150)); // Irregularity in length reduction
-                const newStrokeWidth = strokeWidth * (0.6 + Math.random() * 0.2);
+                const numBranches = Math.floor(baseNumBranches + (random() * (params.irregularity / 50)));
+                const newLenReduction = lenReductionFactor * (1 + (random() - 0.5) * (params.irregularity / 150)); // Irregularity in length reduction
+                const newStrokeWidth = strokeWidth * (0.6 + random() * 0.2);
 
                 for (let i = 0; i < numBranches; i++) {
                     // Calculate angle for each new branch with irregularity
-                    let newAngle = ang + (Math.random() * baseAngleSpread - baseAngleSpread / 2) * (1 + (params.irregularity / 100));
+                    let newAngle = ang + (random() * baseAngleSpread - baseAngleSpread / 2) * (1 + (params.irregularity / 100));
 
                     // Weeping tree specific angle adjustment
                     if (params.treeType === 'Weeping') {
@@ -681,6 +738,7 @@
         const leafinessValueSpan = document.getElementById('leafinessValue');
         const canvasWidthValueSpan = document.getElementById('canvasWidthValue'); // New span
         const canvasHeightValueSpan = document.getElementById('canvasHeightValue'); // New span
+        const seedInput = document.getElementById('seedInput');
         const svgContainer = document.getElementById('svgContainer');
         const downloadBtn = document.getElementById('downloadBtn');
 
@@ -688,6 +746,9 @@
          * Renders the tree based on current UI control values.
          */
         function renderTree() {
+            // Seed the PRNG
+            seedPRNG(parseInt(seedInput.value) || 12345);
+
             // Get canvas dimensions from sliders and convert to pixels
             const svgWidthInches = parseInt(canvasWidthSlider.value);
             const svgHeightInches = parseInt(canvasHeightSlider.value);
@@ -710,7 +771,8 @@
                 leafiness: parseInt(leafinessSlider.value),
                 showBackground: backgroundCheckbox.checked,
                 svgWidth: svgWidth,   // Pass calculated pixel width
-                svgHeight: svgHeight  // Pass calculated pixel height
+                svgHeight: svgHeight, // Pass calculated pixel height
+                seed: parseInt(seedInput.value) || 12345
             };
 
             // Update other slider value displays
@@ -798,6 +860,7 @@
         canvasWidthSlider.addEventListener('input', renderTree); // New event listener
         canvasHeightSlider.addEventListener('input', renderTree); // New event listener
         backgroundCheckbox.addEventListener('change', renderTree);
+        seedInput.addEventListener('input', renderTree); // New event listener
 
         // Listen for download button click
         downloadBtn.addEventListener('click', downloadSVG);

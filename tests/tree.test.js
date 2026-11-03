@@ -23,6 +23,7 @@ const sandbox = {
                     querySelector: () => ({ innerHTML: '' }) // For svgContainer.querySelector('svg')
                 };
             }
+            if (id === 'seedInput') mockElements[id].value = '12345';
             return mockElements[id];
         },
         addEventListener: () => {},
@@ -98,6 +99,25 @@ test('Random branch angle variance', () => {
     assert.notStrictEqual(svg1, svg2, 'SVGs should be different due to random angle variance');
 });
 
+test('Color gradient interpolation', () => {
+    const svg = sandbox.generateFractalTreeSVG(maxParams);
+
+    // Extract all stroke values from the SVG paths
+    const strokeRegex = /stroke="([^"]+)"/g;
+    const strokes = [];
+    let match;
+    while ((match = strokeRegex.exec(svg)) !== null) {
+        if (match[1] !== 'brown') {
+            strokes.push(match[1]);
+        }
+    }
+
+    // Verify we have multiple stroke colors
+    assert.ok(strokes.length > 0, 'Should have stroke colors');
+    const uniqueStrokes = new Set(strokes);
+    assert.ok(uniqueStrokes.size > 1, 'Should have multiple different stroke colors indicating interpolation');
+});
+
 test('Branch thickness tapering', () => {
     const params = {
         algorithm: 'Recursive Branching',
@@ -136,6 +156,21 @@ test('Branch thickness tapering', () => {
     assert.ok(minWidth < initialThickness, 'Branch thickness should taper to a value smaller than the initial trunk thickness');
 });
 
+test('Seeded pseudorandom number generation', () => {
+    sandbox.seedPRNG(123);
+    const svg1 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+
+    sandbox.seedPRNG(123);
+    const svg2 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+
+    assert.strictEqual(svg1, svg2, 'SVGs should be strictly equal when generated with the same seed');
+
+    sandbox.seedPRNG(456);
+    const svg3 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+
+    assert.notStrictEqual(svg1, svg3, 'SVGs should be different when generated with different seeds');
+});
+
 test('SVG serialization structure', () => {
     // We already evaluated the script, and an event listener calls renderTree()
     // However, since we mock addEventListener, it might not run automatically.
@@ -151,4 +186,13 @@ test('SVG serialization structure', () => {
     assert.ok(innerHTML.includes('viewBox="'), 'Should contain viewBox attribute');
     assert.ok(innerHTML.includes('xmlns="http://www.w3.org/2000/svg"'), 'Should contain correct xmlns');
     assert.ok(innerHTML.includes('</svg>'), 'Should close </svg> tag');
+});
+
+test('Schema.org JSON-LD metadata', () => {
+    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    assert.ok(jsonLdMatch, 'Should find JSON-LD script tag');
+
+    const metadata = JSON.parse(jsonLdMatch[1]);
+    assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
+    assert.strictEqual(metadata['@type'], 'WebApplication', 'Type should be WebApplication');
 });
