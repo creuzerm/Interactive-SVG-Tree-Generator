@@ -173,6 +173,15 @@ test('Color gradient interpolation - unit test', () => {
     assert.ok(midColor !== c1.toLowerCase() && midColor !== c2.toLowerCase(), 'Factor 0.5 should return an intermediate color');
 });
 
+test('Color gradient interpolation - precise hex values', () => {
+    const c1 = '#8B4513';
+    const c2 = '#228B22';
+
+    assert.strictEqual(sandbox.interpolateColor(c1, c2, 0.25).toUpperCase(), '#715717', 'Factor 0.25 interpolation');
+    assert.strictEqual(sandbox.interpolateColor(c1, c2, 0.5).toUpperCase(), '#57681B', 'Factor 0.5 interpolation');
+    assert.strictEqual(sandbox.interpolateColor(c1, c2, 0.75).toUpperCase(), '#3D7A1F', 'Factor 0.75 interpolation');
+});
+
 test('Seeded pseudorandom number generation', () => {
     sandbox.seedPRNG(123);
     const val1 = sandbox.random();
@@ -199,6 +208,19 @@ test('Seeded pseudorandom number generation', () => {
     assert.notStrictEqual(svg1, svg3, 'SVGs should be different when generated with different seeds');
 });
 
+test('Seeded pseudorandom number generation - deterministic byte equality', () => {
+    sandbox.seedPRNG(999);
+    const svg1 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+
+    sandbox.seedPRNG(999);
+    const svg2 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+
+    const buf1 = Buffer.from(svg1);
+    const buf2 = Buffer.from(svg2);
+
+    assert.ok(buf1.equals(buf2), 'SVGs should be byte-for-byte identical with the same seed');
+});
+
 test('SVG serialization structure', () => {
     // We already evaluated the script, and an event listener calls renderTree()
     // However, since we mock addEventListener, it might not run automatically.
@@ -219,6 +241,10 @@ test('SVG serialization structure', () => {
 test('Schema.org JSON-LD metadata', () => {
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     assert.ok(jsonLdMatch, 'Should find JSON-LD script tag');
+
+    assert.doesNotThrow(() => {
+        JSON.parse(jsonLdMatch[1]);
+    }, 'JSON-LD structured data should be valid JSON');
 
     const metadata = JSON.parse(jsonLdMatch[1]);
     assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
