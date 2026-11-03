@@ -162,7 +162,29 @@ test('Branch thickness tapering', () => {
     assert.ok(minWidth < initialThickness, 'Branch thickness should taper to a value smaller than the initial trunk thickness');
 });
 
+test('Color gradient interpolation - unit test', () => {
+    const c1 = '#8B4513';
+    const c2 = '#228B22';
+
+    assert.strictEqual(sandbox.interpolateColor(c1, c2, 0).toLowerCase(), c1.toLowerCase(), 'Factor 0 should return start color');
+    assert.strictEqual(sandbox.interpolateColor(c1, c2, 1).toLowerCase(), c2.toLowerCase(), 'Factor 1 should return end color');
+
+    const midColor = sandbox.interpolateColor(c1, c2, 0.5).toLowerCase();
+    assert.ok(midColor !== c1.toLowerCase() && midColor !== c2.toLowerCase(), 'Factor 0.5 should return an intermediate color');
+});
+
 test('Seeded pseudorandom number generation', () => {
+    sandbox.seedPRNG(123);
+    const val1 = sandbox.random();
+    const val2 = sandbox.random();
+
+    sandbox.seedPRNG(123);
+    const val3 = sandbox.random();
+    const val4 = sandbox.random();
+
+    assert.strictEqual(val1, val3, 'Random sequence should match with the same seed');
+    assert.strictEqual(val2, val4, 'Random sequence should match with the same seed');
+
     sandbox.seedPRNG(123);
     const svg1 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
 
