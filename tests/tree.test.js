@@ -116,6 +116,12 @@ test('Color gradient interpolation', () => {
     assert.ok(strokes.length > 0, 'Should have stroke colors');
     const uniqueStrokes = new Set(strokes);
     assert.ok(uniqueStrokes.size > 1, 'Should have multiple different stroke colors indicating interpolation');
+
+    // Verify trunk base color
+    assert.ok(strokes.includes('#8B4513') || strokes.includes('#8b4513'), 'Should include trunk base color (#8B4513)');
+
+    // Verify canopy tip color
+    assert.ok(strokes.includes('#228B22') || strokes.includes('#228b22'), 'Should include canopy tip color (#228B22)');
 });
 
 test('Branch thickness tapering', () => {
