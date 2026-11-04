@@ -100,28 +100,36 @@ test('Random branch angle variance', () => {
 });
 
 test('Color gradient interpolation', () => {
-    const svg = sandbox.generateFractalTreeSVG(maxParams);
+    const algorithms = [
+        { name: 'Fractal Tree', func: sandbox.generateFractalTreeSVG },
+        { name: 'Recursive Branching', func: sandbox.generateRecursiveBranchingTreeSVG },
+        { name: 'L-system', func: sandbox.generateLSystemTreeSVG }
+    ];
 
-    // Extract all stroke values from the SVG paths
-    const strokeRegex = /stroke="([^"]+)"/g;
-    const strokes = [];
-    let match;
-    while ((match = strokeRegex.exec(svg)) !== null) {
-        if (match[1] !== 'brown') {
-            strokes.push(match[1]);
+    for (const algo of algorithms) {
+        const svg = algo.func({ ...maxParams, algorithm: algo.name });
+
+        // Extract all stroke values from the SVG paths
+        const strokeRegex = /stroke="([^"]+)"/g;
+        const strokes = [];
+        let match;
+        while ((match = strokeRegex.exec(svg)) !== null) {
+            if (match[1] !== 'brown') {
+                strokes.push(match[1].toLowerCase());
+            }
         }
+
+        // Verify we have multiple stroke colors
+        assert.ok(strokes.length > 0, `[${algo.name}] Should have stroke colors`);
+        const uniqueStrokes = new Set(strokes);
+        assert.ok(uniqueStrokes.size > 1, `[${algo.name}] Should have multiple different stroke colors indicating interpolation`);
+
+        // Verify trunk base color
+        assert.ok(strokes.includes('#8b4513'), `[${algo.name}] Should include trunk base color (#8B4513)`);
+
+        // Verify canopy tip color
+        assert.ok(strokes.includes('#228b22'), `[${algo.name}] Should include canopy tip color (#228B22)`);
     }
-
-    // Verify we have multiple stroke colors
-    assert.ok(strokes.length > 0, 'Should have stroke colors');
-    const uniqueStrokes = new Set(strokes);
-    assert.ok(uniqueStrokes.size > 1, 'Should have multiple different stroke colors indicating interpolation');
-
-    // Verify trunk base color
-    assert.ok(strokes.includes('#8B4513') || strokes.includes('#8b4513'), 'Should include trunk base color (#8B4513)');
-
-    // Verify canopy tip color
-    assert.ok(strokes.includes('#228B22') || strokes.includes('#228b22'), 'Should include canopy tip color (#228B22)');
 });
 
 test('Branch thickness tapering', () => {
@@ -194,31 +202,47 @@ test('Seeded pseudorandom number generation', () => {
     assert.strictEqual(val1, val3, 'Random sequence should match with the same seed');
     assert.strictEqual(val2, val4, 'Random sequence should match with the same seed');
 
-    sandbox.seedPRNG(123);
-    const svg1 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+    const algorithms = [
+        { name: 'Fractal Tree', func: sandbox.generateFractalTreeSVG },
+        { name: 'Recursive Branching', func: sandbox.generateRecursiveBranchingTreeSVG },
+        { name: 'L-system', func: sandbox.generateLSystemTreeSVG }
+    ];
 
-    sandbox.seedPRNG(123);
-    const svg2 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+    for (const algo of algorithms) {
+        sandbox.seedPRNG(123);
+        const svg1 = algo.func({ ...maxParams, algorithm: algo.name });
 
-    assert.strictEqual(svg1, svg2, 'SVGs should be strictly equal when generated with the same seed');
+        sandbox.seedPRNG(123);
+        const svg2 = algo.func({ ...maxParams, algorithm: algo.name });
 
-    sandbox.seedPRNG(456);
-    const svg3 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+        assert.strictEqual(svg1, svg2, `[${algo.name}] SVGs should be strictly equal when generated with the same seed`);
 
-    assert.notStrictEqual(svg1, svg3, 'SVGs should be different when generated with different seeds');
+        sandbox.seedPRNG(456);
+        const svg3 = algo.func({ ...maxParams, algorithm: algo.name });
+
+        assert.notStrictEqual(svg1, svg3, `[${algo.name}] SVGs should be different when generated with different seeds`);
+    }
 });
 
 test('Seeded pseudorandom number generation - deterministic byte equality', () => {
-    sandbox.seedPRNG(999);
-    const svg1 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+    const algorithms = [
+        { name: 'Fractal Tree', func: sandbox.generateFractalTreeSVG },
+        { name: 'Recursive Branching', func: sandbox.generateRecursiveBranchingTreeSVG },
+        { name: 'L-system', func: sandbox.generateLSystemTreeSVG }
+    ];
 
-    sandbox.seedPRNG(999);
-    const svg2 = sandbox.generateRecursiveBranchingTreeSVG(maxParams);
+    for (const algo of algorithms) {
+        sandbox.seedPRNG(999);
+        const svg1 = algo.func({ ...maxParams, algorithm: algo.name });
 
-    const buf1 = Buffer.from(svg1);
-    const buf2 = Buffer.from(svg2);
+        sandbox.seedPRNG(999);
+        const svg2 = algo.func({ ...maxParams, algorithm: algo.name });
 
-    assert.ok(buf1.equals(buf2), 'SVGs should be byte-for-byte identical with the same seed');
+        const buf1 = Buffer.from(svg1);
+        const buf2 = Buffer.from(svg2);
+
+        assert.ok(buf1.equals(buf2), `[${algo.name}] SVGs should be byte-for-byte identical with the same seed`);
+    }
 });
 
 test('SVG serialization structure', () => {
