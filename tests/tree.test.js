@@ -321,3 +321,27 @@ test('Schema.org JSON-LD metadata', () => {
     assert.ok(metadata.description, 'Metadata should include description');
     assert.ok(metadata.url, 'Metadata should include url');
 });
+
+test('Branch pruning limits - zero and negative sizes', () => {
+    // Should terminate gracefully with size 0
+    let svg = sandbox.generateFractalTreeSVG({ ...maxParams, size: 0, branchiness: 100, algorithm: 'Fractal Tree' });
+    assert.ok(svg.length > 0);
+    let pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 50, `Expected path count to be < 50 for size 0, got ${pathCount}`);
+
+    svg = sandbox.generateRecursiveBranchingTreeSVG({ ...maxParams, size: 0, branchiness: 100, algorithm: 'Recursive Branching' });
+    assert.ok(svg.length > 0);
+    pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 50, `Expected path count to be < 50 for size 0, got ${pathCount}`);
+
+    // Should terminate gracefully with size -10
+    svg = sandbox.generateFractalTreeSVG({ ...maxParams, size: -10, branchiness: 100, algorithm: 'Fractal Tree' });
+    assert.ok(svg.length > 0);
+    pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 50, `Expected path count to be < 50 for size -10, got ${pathCount}`);
+
+    svg = sandbox.generateRecursiveBranchingTreeSVG({ ...maxParams, size: -10, branchiness: 100, algorithm: 'Recursive Branching' });
+    assert.ok(svg.length > 0);
+    pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 50, `Expected path count to be < 50 for size -10, got ${pathCount}`);
+});
