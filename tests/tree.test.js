@@ -60,6 +60,20 @@ const maxParams = {
     svgHeight: 800
 };
 
+test('Branch pruning limits - Fractal Tree', () => {
+    // Test the len < 2 branch pruning limit explicitly
+    const pruneParams = { ...maxParams, size: 1, branchiness: 100, algorithm: 'Fractal Tree' };
+    const svg = sandbox.generateFractalTreeSVG(pruneParams);
+    assert.ok(svg.length > 0);
+});
+
+test('Branch pruning limits - Recursive Branching', () => {
+    // Test the len < 3 branch pruning limit explicitly
+    const pruneParams = { ...maxParams, size: 1, branchiness: 100, algorithm: 'Recursive Branching' };
+    const svg = sandbox.generateRecursiveBranchingTreeSVG(pruneParams);
+    assert.ok(svg.length > 0);
+});
+
 test('Recursion depth limits - Fractal Tree', () => {
     // Should not throw RangeError: Maximum call stack size exceeded
     const svg = sandbox.generateFractalTreeSVG(maxParams);
