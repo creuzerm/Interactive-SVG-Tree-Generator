@@ -111,6 +111,24 @@ test('Recursive branch generation limits and pruning thresholds', () => {
     assert.ok(svg.length > 0, 'Should generate an SVG even with extreme parameters');
 });
 
+test('Recursive branch generation limits - deterministic termination', () => {
+    sandbox.seedPRNG(12345);
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        size: 50, // Reduced from 150 to prevent OOM
+        branchiness: 50, // Reduced from 100 to prevent OOM
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+    const svg1 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+
+    sandbox.seedPRNG(12345);
+    const svg2 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+
+    assert.strictEqual(svg1, svg2, 'Recursive branching with extreme params should terminate deterministically and match');
+});
+
 test('Recursion depth limits - L-system', () => {
     const svg = sandbox.generateLSystemTreeSVG({ ...maxParams, algorithm: 'L-system' });
     assert.ok(svg.length > 0);
