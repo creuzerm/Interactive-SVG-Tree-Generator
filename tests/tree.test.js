@@ -65,6 +65,8 @@ test('Branch pruning limits - Fractal Tree', () => {
     const pruneParams = { ...maxParams, size: 1, branchiness: 100, algorithm: 'Fractal Tree' };
     const svg = sandbox.generateFractalTreeSVG(pruneParams);
     assert.ok(svg.length > 0);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 150, `Expected path count to be < 150 due to pruning, but got ${pathCount}`);
 });
 
 test('Branch pruning limits - Recursive Branching', () => {
@@ -72,6 +74,8 @@ test('Branch pruning limits - Recursive Branching', () => {
     const pruneParams = { ...maxParams, size: 1, branchiness: 100, algorithm: 'Recursive Branching' };
     const svg = sandbox.generateRecursiveBranchingTreeSVG(pruneParams);
     assert.ok(svg.length > 0);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 50, `Expected path count to be < 50 due to pruning, but got ${pathCount}`);
 });
 
 test('Recursion depth limits - Fractal Tree', () => {
@@ -287,4 +291,10 @@ test('Schema.org JSON-LD metadata', () => {
     const metadata = JSON.parse(jsonLdMatch[1]);
     assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
     assert.strictEqual(metadata['@type'], 'WebApplication', 'Type should be WebApplication');
+    assert.ok(metadata.name, 'Metadata should include name');
+    assert.strictEqual(metadata.name, 'Interactive SVG Tree Generator', 'Name should match application title');
+    assert.strictEqual(metadata.applicationCategory, 'DesignApplication', 'ApplicationCategory should be DesignApplication');
+    assert.strictEqual(metadata.operatingSystem, 'All', 'OperatingSystem should be All');
+    assert.ok(metadata.browserRequirements, 'Metadata should include browserRequirements');
+    assert.ok(metadata.description, 'Metadata should include description');
 });
