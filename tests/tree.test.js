@@ -89,6 +89,28 @@ test('Recursion depth limits - Recursive Branching', () => {
     assert.ok(svg.length > 0);
 });
 
+test('Recursive branch generation limits and pruning thresholds', () => {
+    // We intentionally pass a very high branchiness and leafiness, and a deep size,
+    // to test that pruning (e.g. len < 3) safely cuts off recursion
+    // without hitting a stack overflow.
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        size: 150,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy' // Limit num branches for memory considerations during deep recursion check
+    };
+
+    // Should terminate gracefully and return a valid SVG string
+    let svg;
+    assert.doesNotThrow(() => {
+        svg = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should safely terminate without stack overflow under extreme params');
+
+    assert.ok(svg.length > 0, 'Should generate an SVG even with extreme parameters');
+});
+
 test('Recursion depth limits - L-system', () => {
     const svg = sandbox.generateLSystemTreeSVG({ ...maxParams, algorithm: 'L-system' });
     assert.ok(svg.length > 0);
@@ -297,4 +319,5 @@ test('Schema.org JSON-LD metadata', () => {
     assert.strictEqual(metadata.operatingSystem, 'All', 'OperatingSystem should be All');
     assert.ok(metadata.browserRequirements, 'Metadata should include browserRequirements');
     assert.ok(metadata.description, 'Metadata should include description');
+    assert.ok(metadata.url, 'Metadata should include url');
 });
