@@ -386,3 +386,55 @@ test('Branch pruning limits - zero and negative sizes', () => {
     pathCount = (svg.match(/<path/g) || []).length;
     assert.ok(pathCount < 50, `Expected path count to be < 50 for size -10, got ${pathCount}`);
 });
+
+test('Element limits - Fractal Tree', () => {
+    sandbox.seedPRNG(12345);
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Fractal Tree',
+        size: 200,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg;
+    assert.doesNotThrow(() => {
+        svg = sandbox.generateFractalTreeSVG(extremeParams);
+    }, 'Fractal tree should safely terminate without stack overflow under extreme params due to element cap');
+
+    assert.ok(svg.length > 0);
+
+    // We expect the generation to hit the element limit. Since leaves/branches are added
+    // at the same time and limit is checked before adding, it shouldn't go far beyond 15000.
+    const pathCount = (svg.match(/<path/g) || []).length;
+    const circleCount = (svg.match(/<circle/g) || []).length;
+    const totalElements = pathCount + circleCount;
+
+    assert.ok(totalElements <= 16000, `Expected total elements to be <= 16000 due to hard cap, but got ${totalElements}`);
+});
+
+test('Element limits - Recursive Branching', () => {
+    sandbox.seedPRNG(12345);
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        size: 200,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg;
+    assert.doesNotThrow(() => {
+        svg = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should safely terminate without stack overflow under extreme params due to element cap');
+
+    assert.ok(svg.length > 0);
+
+    const pathCount = (svg.match(/<path/g) || []).length;
+    const circleCount = (svg.match(/<circle/g) || []).length;
+    const totalElements = pathCount + circleCount;
+
+    assert.ok(totalElements <= 16000, `Expected total elements to be <= 16000 due to hard cap, but got ${totalElements}`);
+});
