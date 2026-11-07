@@ -129,6 +129,29 @@ test('Recursive branch generation limits - deterministic termination', () => {
     assert.strictEqual(svg1, svg2, 'Recursive branching with extreme params should terminate deterministically and match');
 });
 
+test('Recursive branch generation limits - deterministic termination - Fractal Tree', () => {
+    sandbox.seedPRNG(12345);
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Fractal Tree',
+        size: 150,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg1;
+    assert.doesNotThrow(() => {
+        svg1 = sandbox.generateFractalTreeSVG(extremeParams);
+    }, 'Fractal tree should safely terminate without stack overflow under extreme params');
+
+    sandbox.seedPRNG(12345);
+    const svg2 = sandbox.generateFractalTreeSVG(extremeParams);
+
+    assert.strictEqual(svg1, svg2, 'Fractal tree with extreme params should terminate deterministically and match');
+    assert.ok(svg1.length > 0, 'Should generate an SVG even with extreme parameters');
+});
+
 test('Recursion depth limits - L-system', () => {
     const svg = sandbox.generateLSystemTreeSVG({ ...maxParams, algorithm: 'L-system' });
     assert.ok(svg.length > 0);
