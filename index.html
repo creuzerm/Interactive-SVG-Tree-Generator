@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive SVG Tree Generator</title>
-    <!-- Verified Schema.org WebApplication -->
+    <!-- Verified Schema.org JSON-LD metadata for https://schema.org/WebApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -530,7 +530,7 @@
              * @param {number} strokeWidth - Stroke width of the current branch.
              */
             function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
-                if (currentDepth > maxDepth || len < 2 || svgElements.length > 5000) { // Base case: stop recursion
+                if (currentDepth > maxDepth || len < 2 || svgElements.length > 15000) { // Base case: stop recursion
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
                         svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
@@ -661,7 +661,7 @@
              * @param {number} strokeWidth - Stroke width of the current branch.
              */
             function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
-                if (currentDepth > maxDepth || len < 3 || svgElements.length > 5000) { // Base case: stop if too deep or too short
+                if (currentDepth > maxDepth || len < 3 || svgElements.length > 15000) { // Base case: stop if too deep or too short
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
                         svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
