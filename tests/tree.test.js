@@ -438,3 +438,48 @@ test('Element limits - Recursive Branching', () => {
 
     assert.ok(totalElements <= 16000, `Expected total elements to be <= 16000 due to hard cap, but got ${totalElements}`);
 });
+
+test('Branch pruning boundary - Fractal Tree len == 2', () => {
+    // Tests behavior exactly at the len pruning threshold (len < 2)
+    sandbox.seedPRNG(12345);
+    const pruneParams = { ...maxParams, size: 2, branchiness: 1, algorithm: 'Fractal Tree', irregularity: 0, treeType: 'Default' };
+
+    // We can't perfectly control len due to height/size scaling, but we can set up a test
+    // to ensure no stack overflow and that the number of elements is small.
+    // Instead let's write a mock wrapper if we want to directly test drawBranch, but the file tests via the full function.
+    const svg = sandbox.generateFractalTreeSVG(pruneParams);
+    assert.ok(svg.length > 0);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 100);
+});
+
+test('Branch pruning boundary - Recursive Branching len == 3', () => {
+    sandbox.seedPRNG(12345);
+    const pruneParams = { ...maxParams, size: 3, branchiness: 1, algorithm: 'Recursive Branching', irregularity: 0, treeType: 'Default' };
+    const svg = sandbox.generateRecursiveBranchingTreeSVG(pruneParams);
+    assert.ok(svg.length > 0);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    assert.ok(pathCount < 100);
+});
+
+test('Element limit boundary - precisely at 15000', () => {
+    // To hit 15000 elements limit, we push branchiness to max and set size high enough so length pruning doesn't hit early.
+    // We already have tests checking totalElements <= 16000, let's just make sure they reliably hit the element limit without crashing.
+    sandbox.seedPRNG(111);
+    const extremeParams = { ...maxParams, algorithm: 'Fractal Tree', size: 200, branchiness: 20, treeType: 'Leafy', irregularity: 0 };
+    const svg = sandbox.generateFractalTreeSVG(extremeParams);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    const circleCount = (svg.match(/<circle/g) || []).length;
+    assert.ok((pathCount + circleCount) > 14900 && (pathCount + circleCount) <= 15010, 'Should hit the element limit closely');
+});
+
+test('MaxDepth boundary test', () => {
+    // Test branchiness = 0, which corresponds to maxDepth = 0 + 3 = 3 for Fractal Tree
+    sandbox.seedPRNG(111);
+    const params = { ...maxParams, algorithm: 'Fractal Tree', size: 20, branchiness: 0, treeType: 'Default', irregularity: 0 };
+    const svg = sandbox.generateFractalTreeSVG(params);
+    const pathCount = (svg.match(/<path/g) || []).length;
+    // maxDepth is 3. Depth 0 has 1 branch. Depth 1 has 2. Depth 2 has 4. Depth 3 has 8. Total = 1+2+4+8 = 15 branches.
+    // Since irregularity = 0, no extra branches.
+    assert.ok(pathCount >= 15 && pathCount <= 30, 'Path count should roughly match expected depth calculation due to branch probability');
+});
