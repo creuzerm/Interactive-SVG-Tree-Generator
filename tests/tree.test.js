@@ -483,3 +483,53 @@ test('MaxDepth boundary test', () => {
     // Since irregularity = 0, no extra branches.
     assert.ok(pathCount >= 15 && pathCount <= 30, 'Path count should roughly match expected depth calculation due to branch probability');
 });
+
+test('Recursive branch generation limits - pruning thresholds terminate deterministically without stack overflow', () => {
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        size: 200,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg1, svg2;
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(9999);
+        svg1 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should terminate without stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(9999);
+        svg2 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should terminate without stack overflow again');
+
+    assert.strictEqual(svg1, svg2, 'Pruning thresholds should guarantee deterministic termination');
+    assert.ok(svg1.length > 0, 'SVG should be generated');
+});
+
+test('Fractal Tree branch generation limits - pruning thresholds terminate deterministically without stack overflow', () => {
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Fractal Tree',
+        size: 200,
+        branchiness: 100,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg1, svg2;
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(9999);
+        svg1 = sandbox.generateFractalTreeSVG(extremeParams);
+    }, 'Fractal tree should terminate without stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(9999);
+        svg2 = sandbox.generateFractalTreeSVG(extremeParams);
+    }, 'Fractal tree should terminate without stack overflow again');
+
+    assert.strictEqual(svg1, svg2, 'Pruning thresholds should guarantee deterministic termination');
+    assert.ok(svg1.length > 0, 'SVG should be generated');
+});
