@@ -352,16 +352,25 @@ test('Schema.org JSON-LD metadata', () => {
     }, 'JSON-LD structured data should be valid JSON');
 
     const metadata = JSON.parse(jsonLdMatch[1]);
+
+    // Explicitly verify `@context`, `@id`, and `@type`
     assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
-    assert.strictEqual(metadata['@id'], 'https://creuzerm.github.io/Interactive-SVG-Tree-Generator/', 'ID should be the application URL');
+    assert.strictEqual(metadata['@id'], 'https://creuzerm.github.io/Interactive-SVG-Tree-Generator/', 'ID should be the exact deployed application URL');
     assert.strictEqual(metadata['@type'], 'WebApplication', 'Type should be WebApplication');
-    assert.ok(metadata.name, 'Metadata should include name');
+
+    // Verify properties
     assert.strictEqual(metadata.name, 'Interactive SVG Tree Generator', 'Name should match application title');
     assert.strictEqual(metadata.applicationCategory, 'DesignApplication', 'ApplicationCategory should be DesignApplication');
     assert.strictEqual(metadata.operatingSystem, 'All', 'OperatingSystem should be All');
+
     assert.ok(metadata.browserRequirements, 'Metadata should include browserRequirements');
     assert.ok(metadata.description, 'Metadata should include description');
-    assert.ok(metadata.url, 'Metadata should include url');
+    assert.strictEqual(metadata.url, 'https://creuzerm.github.io/Interactive-SVG-Tree-Generator/', 'URL should match the application URL');
+
+    assert.deepStrictEqual(metadata.author, {
+        "@type": "Person",
+        "name": "creuzerm"
+    }, 'Author should be defined with correct type and name');
 });
 
 test('Branch pruning limits - zero and negative sizes', () => {
@@ -508,6 +517,36 @@ test('Recursive branch generation limits - pruning thresholds terminate determin
 
     assert.strictEqual(svg1, svg2, 'Pruning thresholds should guarantee deterministic termination');
     assert.ok(svg1.length > 0, 'SVG should be generated');
+});
+
+test('Exact pruning thresholds - len < 2 (Fractal Tree) and len < 3 (Recursive Branching) deterministic termination', () => {
+    const fractalParams = { ...maxParams, algorithm: 'Fractal Tree', size: 1, branchiness: 50 }; // size 1 will force length < 2 quickly
+
+    let svgFractal1, svgFractal2;
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(777);
+        svgFractal1 = sandbox.generateFractalTreeSVG(fractalParams);
+    }, 'Fractal Tree pruning threshold len < 2 should terminate deterministically without stack overflow');
+
+    sandbox.seedPRNG(777);
+    svgFractal2 = sandbox.generateFractalTreeSVG(fractalParams);
+
+    assert.strictEqual(svgFractal1, svgFractal2, 'Fractal tree at len < 2 should terminate deterministically');
+    assert.ok(svgFractal1.length > 0);
+
+    const recursiveParams = { ...maxParams, algorithm: 'Recursive Branching', size: 2, branchiness: 50 }; // size 2 will force length < 3 quickly
+
+    let svgRecursive1, svgRecursive2;
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(888);
+        svgRecursive1 = sandbox.generateRecursiveBranchingTreeSVG(recursiveParams);
+    }, 'Recursive branching pruning threshold len < 3 should terminate deterministically without stack overflow');
+
+    sandbox.seedPRNG(888);
+    svgRecursive2 = sandbox.generateRecursiveBranchingTreeSVG(recursiveParams);
+
+    assert.strictEqual(svgRecursive1, svgRecursive2, 'Recursive branching at len < 3 should terminate deterministically');
+    assert.ok(svgRecursive1.length > 0);
 });
 
 test('Fractal Tree branch generation limits - pruning thresholds terminate deterministically without stack overflow', () => {
