@@ -353,6 +353,7 @@ test('Schema.org JSON-LD metadata', () => {
 
     const metadata = JSON.parse(jsonLdMatch[1]);
     assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
+    assert.strictEqual(metadata['@id'], 'https://creuzerm.github.io/Interactive-SVG-Tree-Generator/', 'ID should be the application URL');
     assert.strictEqual(metadata['@type'], 'WebApplication', 'Type should be WebApplication');
     assert.ok(metadata.name, 'Metadata should include name');
     assert.strictEqual(metadata.name, 'Interactive SVG Tree Generator', 'Name should match application title');
@@ -529,6 +530,32 @@ test('Fractal Tree branch generation limits - pruning thresholds terminate deter
         sandbox.seedPRNG(9999);
         svg2 = sandbox.generateFractalTreeSVG(extremeParams);
     }, 'Fractal tree should terminate without stack overflow again');
+
+    assert.strictEqual(svg1, svg2, 'Pruning thresholds should guarantee deterministic termination');
+    assert.ok(svg1.length > 0, 'SVG should be generated');
+});
+
+test('Recursive branch generation limits - verify pruning thresholds terminate deterministically without stack overflow', () => {
+    sandbox.seedPRNG(54321);
+    const extremeParams = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        size: 300,
+        branchiness: 150,
+        leafiness: 100,
+        treeType: 'Branchy'
+    };
+
+    let svg1, svg2;
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(54321);
+        svg1 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should terminate without stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(54321);
+        svg2 = sandbox.generateRecursiveBranchingTreeSVG(extremeParams);
+    }, 'Recursive branching should terminate without stack overflow again');
 
     assert.strictEqual(svg1, svg2, 'Pruning thresholds should guarantee deterministic termination');
     assert.ok(svg1.length > 0, 'SVG should be generated');
