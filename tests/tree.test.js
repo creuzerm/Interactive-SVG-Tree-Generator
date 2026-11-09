@@ -547,6 +547,47 @@ test('Recursive branch generation limits, ensuring pruning thresholds terminate 
     assert.ok(result1.length > 0, 'Should output valid SVG elements');
 });
 
+test('Recursive branch generation limits, ensuring pruning thresholds terminate deterministically without stack overflow (Full Check)', () => {
+    // Both Fractal Tree and Recursive Branching edge cases
+    const baseParams = {
+        ...maxParams,
+        size: 300,
+        branchiness: 200,
+        leafiness: 100,
+        treeType: 'Default'
+    };
+
+    const recursiveParams = { ...baseParams, algorithm: 'Recursive Branching' };
+    let rec1, rec2;
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(123);
+        rec1 = sandbox.generateRecursiveBranchingTreeSVG(recursiveParams);
+    }, 'Recursive branching should terminate without stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(123);
+        rec2 = sandbox.generateRecursiveBranchingTreeSVG(recursiveParams);
+    }, 'Recursive branching should terminate without stack overflow again');
+
+    assert.strictEqual(rec1, rec2, 'Recursive branching should be deterministic');
+
+    const fractalParams = { ...baseParams, algorithm: 'Fractal Tree' };
+    let frac1, frac2;
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(456);
+        frac1 = sandbox.generateFractalTreeSVG(fractalParams);
+    }, 'Fractal Tree should terminate without stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(456);
+        frac2 = sandbox.generateFractalTreeSVG(fractalParams);
+    }, 'Fractal Tree should terminate without stack overflow again');
+
+    assert.strictEqual(frac1, frac2, 'Fractal tree should be deterministic');
+});
+
 test('Exact pruning thresholds - len < 2 (Fractal Tree) and len < 3 (Recursive Branching) deterministic termination', () => {
     const fractalParams = { ...maxParams, algorithm: 'Fractal Tree', size: 1, branchiness: 50 }; // size 1 will force length < 2 quickly
 
