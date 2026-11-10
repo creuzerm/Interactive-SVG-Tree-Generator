@@ -756,6 +756,55 @@
         /**
          * Renders the tree based on current UI control values.
          */
+
+        /**
+         * Parses URL search parameters, clamps values to safe bounds,
+         * and updates UI controls accordingly.
+         */
+        function parseURLParams() {
+            if (typeof window === 'undefined' || !window.location || !window.location.search) return;
+            const params = new URLSearchParams(window.location.search);
+
+            const clamp = (val, min, max, defaultVal) => {
+                const parsed = parseInt(val, 10);
+                if (isNaN(parsed)) return defaultVal;
+                return Math.max(min, Math.min(max, parsed));
+            };
+
+            if (params.has('algorithm')) {
+                const validAlgorithms = ['Fractal Tree', 'L-system', 'Recursive Branching'];
+                if (validAlgorithms.includes(params.get('algorithm'))) {
+                    algorithmSelect.value = params.get('algorithm');
+                }
+            }
+
+            if (params.has('treeType')) {
+                const validTypes = ['Default', 'Evergreen', 'Deciduous', 'Leafy', 'Branchy', 'Weeping'];
+                if (validTypes.includes(params.get('treeType'))) {
+                    treeTypeSelect.value = params.get('treeType');
+                }
+            }
+
+            if (params.has('size')) sizeSlider.value = clamp(params.get('size'), 20, 200, parseInt(sizeSlider.value));
+            if (params.has('branchiness')) branchinessSlider.value = clamp(params.get('branchiness'), 1, 10, parseInt(branchinessSlider.value));
+            if (params.has('shape')) shapeSlider.value = clamp(params.get('shape'), 0, 100, parseInt(shapeSlider.value));
+            if (params.has('irregularity')) irregularitySlider.value = clamp(params.get('irregularity'), 0, 100, parseInt(irregularitySlider.value));
+            if (params.has('trunkThickness')) trunkThicknessSlider.value = clamp(params.get('trunkThickness'), 2, 100, parseInt(trunkThicknessSlider.value));
+            if (params.has('leafSize')) leafSizeSlider.value = clamp(params.get('leafSize'), 0, 100, parseInt(leafSizeSlider.value));
+            if (params.has('leafiness')) leafinessSlider.value = clamp(params.get('leafiness'), 0, 100, parseInt(leafinessSlider.value));
+            if (params.has('canvasWidth')) canvasWidthSlider.value = clamp(params.get('canvasWidth'), 4, 20, parseInt(canvasWidthSlider.value));
+            if (params.has('canvasHeight')) canvasHeightSlider.value = clamp(params.get('canvasHeight'), 4, 20, parseInt(canvasHeightSlider.value));
+            if (params.has('seed')) {
+                const seedVal = parseInt(params.get('seed'), 10);
+                if (!isNaN(seedVal)) {
+                    seedInput.value = seedVal;
+                }
+            }
+            if (params.has('showBackground')) {
+                backgroundCheckbox.checked = params.get('showBackground') === 'true';
+            }
+        }
+
         function renderTree() {
             // Seed the PRNG
             seedPRNG(parseInt(seedInput.value) || 12345);
@@ -878,6 +927,7 @@
 
         // Initial render when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
+            parseURLParams();
             renderTree();
             // No longer need to listen for window resize for SVG dimensions,
             // as they are now controlled by sliders.

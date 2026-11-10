@@ -11,6 +11,7 @@ const scriptContent = scriptMatch[1];
 // Create a mock DOM environment
 const mockElements = {};
 const sandbox = {
+    URLSearchParams: URLSearchParams,
     document: {
         getElementById: (id) => {
             if (!mockElements[id]) {
@@ -31,6 +32,7 @@ const sandbox = {
         body: { appendChild: () => {}, removeChild: () => {} }
     },
     window: {
+        location: { search: '' },
         addEventListener: () => {}
     },
     console: console,
@@ -765,4 +767,41 @@ test('SVG path coordinate generation', () => {
     }
 
     assert.ok(pathCount > 0, 'Should find path coordinates to test');
+});
+
+
+test('URL parameter parsing with extreme values - branchiness, trunkThickness, size clamped correctly', () => {
+    // Modify sandbox window location search
+    sandbox.window.location = { search: '?branchiness=9999&trunkThickness=NaN&size=-5&shape=200&irregularity=-100&leafSize=NaN' };
+
+    // reset mock elements values first
+    sandbox.document.getElementById('branchinessSlider').value = '5';
+    sandbox.document.getElementById('trunkThicknessSlider').value = '50';
+    sandbox.document.getElementById('sizeSlider').value = '100';
+    sandbox.document.getElementById('shapeSlider').value = '50';
+    sandbox.document.getElementById('irregularitySlider').value = '50';
+    sandbox.document.getElementById('leafSizeSlider').value = '50';
+
+    sandbox.parseURLParams();
+
+    // Check clamping logic
+    assert.strictEqual(sandbox.document.getElementById('branchinessSlider').value, 10, 'branchiness should be clamped to max 10');
+    assert.strictEqual(sandbox.document.getElementById('trunkThicknessSlider').value, 50, 'trunkThickness NaN should fallback to default (50)');
+    assert.strictEqual(sandbox.document.getElementById('sizeSlider').value, 20, 'size should be clamped to min 20');
+    assert.strictEqual(sandbox.document.getElementById('shapeSlider').value, 100, 'shape should be clamped to max 100');
+    assert.strictEqual(sandbox.document.getElementById('irregularitySlider').value, 0, 'irregularity should be clamped to min 0');
+    assert.strictEqual(sandbox.document.getElementById('leafSizeSlider').value, 50, 'leafSize NaN should fallback to default (50)');
+});
+
+test('URL parameter parsing with valid URL search parameters', () => {
+    sandbox.window.location = { search: '?branchiness=8&trunkThickness=25&size=150&algorithm=L-system&treeType=Evergreen&showBackground=false' };
+
+    sandbox.parseURLParams();
+
+    assert.strictEqual(sandbox.document.getElementById('branchinessSlider').value, 8, 'branchiness should parse valid value');
+    assert.strictEqual(sandbox.document.getElementById('trunkThicknessSlider').value, 25, 'trunkThickness should parse valid value');
+    assert.strictEqual(sandbox.document.getElementById('sizeSlider').value, 150, 'size should parse valid value');
+    assert.strictEqual(sandbox.document.getElementById('algorithmSelect').value, 'L-system', 'algorithm should parse valid value');
+    assert.strictEqual(sandbox.document.getElementById('treeTypeSelect').value, 'Evergreen', 'treeType should parse valid value');
+    assert.strictEqual(sandbox.document.getElementById('backgroundCheckbox').checked, false, 'showBackground should parse valid false value');
 });
