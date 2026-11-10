@@ -695,3 +695,74 @@ test('Recursive branch generation limits, ensuring pruning thresholds terminate 
     assert.strictEqual(result1, result2, 'Generations must be deterministic');
     assert.ok(result1.length > 0, 'Should output valid SVG elements');
 });
+
+test('Assert boundary conditions for 0 branches, single-trunk trees, and maximum leaves', () => {
+    // 0 branches
+    const zeroBranchesParams = { ...maxParams, size: 0, branchiness: 10, algorithm: 'Fractal Tree' };
+    const zeroSvg = sandbox.generateFractalTreeSVG(zeroBranchesParams);
+    assert.strictEqual((zeroSvg.match(/<path/g) || []).length, 0, 'Size 0 should result in 0 branches (paths)');
+
+    // Single-trunk tree
+    // To get single trunk in Fractal Tree, maxDepth = 0. Since maxDepth = branchiness + 3, branchiness = -3
+    const singleTrunkParams = { ...maxParams, size: 100, branchiness: -3, algorithm: 'Fractal Tree' };
+    const singleSvg = sandbox.generateFractalTreeSVG(singleTrunkParams);
+    assert.strictEqual((singleSvg.match(/<path/g) || []).length, 1, 'Branchiness -3 should result in a single-trunk tree (1 path)');
+
+    // Maximum leaves
+    // Max leaves can be achieved by having very high leafiness and small size so it creates many leaves
+    const maxLeavesParams = { ...maxParams, size: 200, branchiness: 100, leafiness: 100, algorithm: 'Fractal Tree' };
+    sandbox.seedPRNG(1);
+    const maxLeavesSvg = sandbox.generateFractalTreeSVG(maxLeavesParams);
+    const circleCount = (maxLeavesSvg.match(/<circle/g) || []).length;
+    assert.ok(circleCount > 1000, 'Maximum leaves configuration should generate a large number of leaf elements');
+});
+
+test('tree recursion depth clamping (preventing call stack overflow)', () => {
+    // Both algorithms (Fractal Tree, Recursive Branching) cap elements to prevent call stack overflow.
+    // Ensure we do not throw with extreme params and check that the clamping mechanisms effectively limit depth length combinations
+    const extremeParams = { ...maxParams, size: 200, branchiness: 200, leafiness: 100 };
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(1);
+        sandbox.generateFractalTreeSVG({ ...extremeParams, algorithm: 'Fractal Tree' });
+    }, 'Fractal Tree: recursion depth clamping must prevent stack overflow');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(1);
+        sandbox.generateRecursiveBranchingTreeSVG({ ...extremeParams, algorithm: 'Recursive Branching' });
+    }, 'Recursive Branching: recursion depth clamping must prevent stack overflow');
+});
+
+test('branch angle perturbation limits', () => {
+    // We check that generating paths with high irregularity/shape settings does not output NaN or undefined inside SVG path coordinates
+    const extremeAngleParams = { ...maxParams, irregularity: 500, shape: 500, algorithm: 'Fractal Tree' };
+
+    sandbox.seedPRNG(123);
+    const svg = sandbox.generateFractalTreeSVG(extremeAngleParams);
+
+    assert.ok(svg.length > 0);
+    assert.strictEqual(svg.includes('NaN'), false, 'SVG should not contain NaN coordinates when angles are perturbed to extremes');
+    assert.strictEqual(svg.includes('undefined'), false, 'SVG should not contain undefined coordinates');
+});
+
+test('SVG path coordinate generation', () => {
+    // Tests that the 'd' attribute of paths matches a specific structural format
+    // corresponding to quadratic Bezier curves (M x,y Q cx,cy x2,y2) and that coordinates are valid numbers
+    sandbox.seedPRNG(42);
+    const svg = sandbox.generateFractalTreeSVG({ ...maxParams, algorithm: 'Fractal Tree' });
+
+    const pathRegex = /<path d="M([^,]+),([^ ]+) Q([^,]+),([^ ]+) ([^,]+),([^"]+)"/g;
+
+    let match;
+    let pathCount = 0;
+    while ((match = pathRegex.exec(svg)) !== null) {
+        pathCount++;
+        // match[1] to match[6] should all be valid numbers
+        for (let i = 1; i <= 6; i++) {
+            const val = parseFloat(match[i]);
+            assert.ok(!isNaN(val), `Coordinate value ${match[i]} should be a valid number`);
+        }
+    }
+
+    assert.ok(pathCount > 0, 'Should find path coordinates to test');
+});
