@@ -472,6 +472,9 @@
          */
         function generateFractalTreeSVG(params) {
             let svgElements = [];
+            let elementCount = 0;
+            const sinCache = new Map();
+            const cosCache = new Map();
             
             // Scale initialLength and trunkThickness based on SVG height and size slider
             const maxTreeHeightRatio = 0.8; // Tree can occupy up to 80% of SVG height
@@ -532,10 +535,10 @@
              * @param {number} strokeWidth - Stroke width of the current branch.
              */
             function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
-                if (currentDepth > maxDepth || len < 2 || svgElements.length > 15000) { // Base case: stop recursion
+                if (currentDepth > maxDepth || len < 2 || elementCount > 15000) { // Base case: stop recursion
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
-                        svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                        { svgElements.push(['<circle cx="', x1, '" cy="', y1, '" r="', Math.max(1.5, baseLeafRadius * leafRadiusFactor), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
                     }
                     return;
                 }
@@ -543,8 +546,14 @@
                 // Apply irregularity to length
                 len *= (1 + (random() - 0.5) * (params.irregularity / 100));
 
-                const x2 = x1 + len * Math.cos(toRadians(ang));
-                const y2 = y1 + len * Math.sin(toRadians(ang));
+                let cosAng;
+                if (cosCache.has(ang)) { cosAng = cosCache.get(ang); }
+                else { cosAng = Math.cos(toRadians(ang)); cosCache.set(ang, cosAng); }
+                const x2 = x1 + len * cosAng;
+                let sinAng;
+                if (sinCache.has(ang)) { sinAng = sinCache.get(ang); }
+                else { sinAng = Math.sin(toRadians(ang)); sinCache.set(ang, sinAng); }
+                const y2 = y1 + len * sinAng;
 
                 // Calculate control point for quadratic Bezier curve
                 const dx = x2 - x1;
@@ -565,7 +574,7 @@
 
                 let depthFactor = Math.min(1, currentDepth / maxDepth);
                 // Add the branch segment as a curved path
-                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                { svgElements.push(['<path d="M', x1, ',', y1, ' Q', cpX, ',', cpY, ' ', x2, ',', y2, '" stroke="', interpolateColor("#8B4513", "#228B22", depthFactor), '" stroke-width="', Math.max(0.5, strokeWidth), '" stroke-linecap="round"/>'].join('')); elementCount++; }
 
                 // Recursive calls for sub-branches
                 let randomAngleVariation = (random() * (params.irregularity / 10) - (params.irregularity / 20)); // -5 to +5 for irregularity 100

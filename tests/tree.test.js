@@ -805,3 +805,29 @@ test('URL parameter parsing with valid URL search parameters', () => {
     assert.strictEqual(sandbox.document.getElementById('treeTypeSelect').value, 'Evergreen', 'treeType should parse valid value');
     assert.strictEqual(sandbox.document.getElementById('backgroundCheckbox').checked, false, 'showBackground should parse valid false value');
 });
+
+test('SVG path coordinate accuracy check', () => {
+    // Assert that the optimization of generating array paths didn't break coordinate stringifying logic
+    sandbox.seedPRNG(42);
+    const svg = sandbox.generateFractalTreeSVG({
+        ...maxParams,
+        algorithm: 'Fractal Tree',
+        size: 50,
+        branchiness: 2,
+        irregularity: 0
+    });
+
+    const pathRegex = /<path d="M([^,]+),([^ ]+) Q([^,]+),([^ ]+) ([^,]+),([^"]+)"/g;
+    let match;
+    let pathCount = 0;
+    while ((match = pathRegex.exec(svg)) !== null) {
+        pathCount++;
+        for (let i = 1; i <= 6; i++) {
+            const val = parseFloat(match[i]);
+            assert.ok(!isNaN(val), `Coordinate value ${match[i]} should be a valid number`);
+            // Check that it's a relatively reasonable coordinate value for 800x800 SVG
+            assert.ok(val > -1000 && val < 2000, `Coordinate value ${val} out of reasonable bounds`);
+        }
+    }
+    assert.ok(pathCount > 0, 'Should find paths in optimized output');
+});
