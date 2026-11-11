@@ -925,3 +925,103 @@ test('Leaf polygon coordinate bounds check', () => {
 
     assert.ok(circleCount > 0, 'Should find leaf circles to test');
 });
+
+// --- Mock Wind Simulation Functions for Testing ---
+function calculateWindSwayAngle(baseAngle, windForce, time, damping, mass) {
+    if (windForce === 0) return baseAngle;
+
+    // Clamp extreme gust forces
+    const maxForce = 100;
+    const clampedForce = Math.max(-maxForce, Math.min(maxForce, windForce));
+
+    const amplitude = clampedForce / mass;
+    const omega = Math.sqrt(1 / mass); // simplified frequency
+    const sway = amplitude * Math.exp(-damping * time) * Math.cos(omega * time);
+    return baseAngle + sway;
+}
+
+function calculateWindBranchLength(baseLength, windForce) {
+    // Wind might slightly compress branch visually, but should never make it negative
+    const compression = Math.abs(windForce) * 0.05;
+    return Math.max(0, baseLength - compression);
+}
+
+function calculateCoordinates(x, y, length, angle) {
+    const rad = angle * Math.PI / 180;
+    return {
+        x2: x + length * Math.cos(rad),
+        y2: y + length * Math.sin(rad)
+    };
+}
+
+// --- Wind Simulation Tests ---
+test('Wind sway angle harmonic oscillation', () => {
+    const baseAngle = 90;
+    const force = 10;
+    const damping = 0; // No damping for pure oscillation check
+    const mass = 1;
+
+    const angle0 = calculateWindSwayAngle(baseAngle, force, 0, damping, mass);
+    const anglePi = calculateWindSwayAngle(baseAngle, force, Math.PI, damping, mass);
+    const angle2Pi = calculateWindSwayAngle(baseAngle, force, 2 * Math.PI, damping, mass);
+
+    // With cos(t), it oscillates between +amplitude and -amplitude
+    assert.ok(angle0 > baseAngle, 'Should sway positively initially');
+    assert.ok(anglePi < baseAngle, 'Should sway negatively at half period');
+    assert.ok(Math.abs(angle2Pi - angle0) < 0.001, 'Should return to initial state at full period');
+});
+
+test('Wind sway damping decay factors', () => {
+    const baseAngle = 90;
+    const force = 50;
+    const damping = 0.5;
+    const mass = 1;
+
+    const sway1 = Math.abs(calculateWindSwayAngle(baseAngle, force, 0, damping, mass) - baseAngle);
+    const sway2 = Math.abs(calculateWindSwayAngle(baseAngle, force, 2 * Math.PI, damping, mass) - baseAngle);
+    const sway3 = Math.abs(calculateWindSwayAngle(baseAngle, force, 4 * Math.PI, damping, mass) - baseAngle);
+
+    assert.ok(sway1 > sway2, 'Sway amplitude should decay over time');
+    assert.ok(sway2 > sway3, 'Sway amplitude should continue to decay');
+    assert.ok(sway3 < sway1 * 0.1, 'Sway should significantly dampen over multiple periods');
+});
+
+test('Zero-wind equilibrium', () => {
+    const baseAngle = 45;
+    assert.strictEqual(calculateWindSwayAngle(baseAngle, 0, 10, 0.1, 1), baseAngle, 'Should return base angle when wind is zero');
+    assert.strictEqual(calculateWindSwayAngle(baseAngle, 0, 100, 0.5, 2), baseAngle, 'Should return base angle independent of time/damping when wind is zero');
+});
+
+test('Extreme gust forces boundary conditions', () => {
+    const baseAngle = 90;
+    const normalForceAngle = calculateWindSwayAngle(baseAngle, 100, 0, 0.1, 1);
+    const extremeForceAngle = calculateWindSwayAngle(baseAngle, 10000, 0, 0.1, 1);
+    const negativeExtremeForceAngle = calculateWindSwayAngle(baseAngle, -10000, 0, 0.1, 1);
+
+    assert.strictEqual(extremeForceAngle, normalForceAngle, 'Extreme positive force should be capped');
+    assert.ok(isFinite(extremeForceAngle), 'Capped force should produce finite angle');
+    assert.ok(isFinite(negativeExtremeForceAngle), 'Negative extreme force should produce finite angle');
+});
+
+test('Wind force does not produce negative lengths', () => {
+    const baseLength = 10;
+    const normalLength = calculateWindBranchLength(baseLength, 10);
+    const extremeLength = calculateWindBranchLength(baseLength, 10000);
+
+    assert.ok(normalLength > 0, 'Normal wind should just compress slightly');
+    assert.strictEqual(extremeLength, 0, 'Extreme wind should not produce negative length, it should clamp to 0');
+});
+
+test('Wind force does not produce infinite coordinates', () => {
+    const baseAngle = 90;
+    const windForce = 1e9; // Extreme wind
+    const length = calculateWindBranchLength(50, windForce);
+    const angle = calculateWindSwayAngle(baseAngle, windForce, 0, 0.1, 1);
+
+    const { x2, y2 } = calculateCoordinates(0, 0, length, angle);
+
+    assert.ok(isFinite(x2), 'x2 coordinate should be finite');
+    assert.ok(isFinite(y2), 'y2 coordinate should be finite');
+    assert.ok(!isNaN(x2), 'x2 coordinate should not be NaN');
+    assert.ok(!isNaN(y2), 'y2 coordinate should not be NaN');
+});
