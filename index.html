@@ -318,6 +318,43 @@
         // DPI for converting inches to pixels (standard web DPI)
         const DPI = 96;
 
+        // --- Texture Generation ---
+
+        /**
+         * Generates an SVG defs block containing a filter and pattern for a bark texture.
+         * @param {number} seed - The random seed for the turbulence filter.
+         * @param {number} baseFrequency - The base frequency for the turbulence filter.
+         * @param {number} numOctaves - The number of octaves for the turbulence filter.
+         * @returns {string} SVG string representing the defs block.
+         */
+        function generateBarkFilterSVG(seed, baseFrequency, numOctaves) {
+            // Safe fallback logic
+            if (typeof baseFrequency !== 'number' || baseFrequency <= 0) {
+                baseFrequency = 0.05;
+            }
+            if (typeof numOctaves !== 'number' || numOctaves <= 0) {
+                numOctaves = 3;
+            }
+            if (typeof seed !== 'number') {
+                seed = 12345;
+            }
+
+            return `
+                <defs>
+                    <filter id="barkTexture" x="0" y="0" width="100%" height="100%">
+                        <feTurbulence type="fractalNoise" baseFrequency="${baseFrequency} ${baseFrequency/2}" numOctaves="${numOctaves}" seed="${seed}" result="noise" />
+                        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.5 0" in="noise" result="coloredNoise" />
+                        <feComposite operator="in" in="coloredNoise" in2="SourceGraphic" result="composite" />
+                        <feBlend mode="multiply" in="composite" in2="SourceGraphic" />
+                    </filter>
+                    <pattern id="barkPattern" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <rect width="100" height="100" fill="#8B4513" />
+                        <rect width="100" height="100" filter="url(#barkTexture)" />
+                    </pattern>
+                </defs>
+            `;
+        }
+
         // --- Tree Generation Algorithms ---
 
         /**
@@ -898,9 +935,12 @@
                 groundRect = `<rect x="0" y="${svgHeight - 100}" width="${svgWidth}" height="100" class="ground-rect"/>`; // Ground
             }
 
+            const defs = generateBarkFilterSVG(params.seed, 0.05, 3);
+
             // Construct the full SVG string with explicit width/height
             const fullSVG = `
                 <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+                    ${defs}
                     ${backgroundRect}
                     ${groundRect}
                     ${treeSVGContent}

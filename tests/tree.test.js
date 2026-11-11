@@ -1210,3 +1210,45 @@ test('Zero-branch segment length decay safely terminates without NaN coordinates
     const lsystemSvg = sandbox.generateLSystemTreeSVG({ ...zeroSizeParams, algorithm: 'L-system' });
     assert.strictEqual(lsystemSvg.includes('NaN'), false, 'L-system SVG should not contain NaN coordinates when size is 0');
 });
+
+test('generateBarkFilterSVG determinism', () => {
+    const seed1 = 12345;
+    const seed2 = 54321;
+    const freq = 0.05;
+    const octaves = 3;
+
+    const svg1 = sandbox.generateBarkFilterSVG(seed1, freq, octaves);
+    const svg2 = sandbox.generateBarkFilterSVG(seed1, freq, octaves);
+    const svg3 = sandbox.generateBarkFilterSVG(seed2, freq, octaves);
+
+    assert.strictEqual(svg1, svg2, 'Bark filter SVG should be strictly equal when generated with the same seed');
+    assert.notStrictEqual(svg1, svg3, 'Bark filter SVG should be different when generated with different seeds');
+});
+
+test('generateBarkFilterSVG safe fallback', () => {
+    const seed = 12345;
+    const defaultFreq = 0.05;
+    const defaultOctaves = 3;
+
+    const normalSvg = sandbox.generateBarkFilterSVG(seed, defaultFreq, defaultOctaves);
+
+    // Test with zero frequency
+    const zeroFreqSvg = sandbox.generateBarkFilterSVG(seed, 0, defaultOctaves);
+    assert.strictEqual(zeroFreqSvg, normalSvg, 'Should fall back to default baseFrequency when 0 is provided');
+
+    // Test with negative frequency
+    const negativeFreqSvg = sandbox.generateBarkFilterSVG(seed, -1, defaultOctaves);
+    assert.strictEqual(negativeFreqSvg, normalSvg, 'Should fall back to default baseFrequency when negative value is provided');
+
+    // Test with zero octaves
+    const zeroOctavesSvg = sandbox.generateBarkFilterSVG(seed, defaultFreq, 0);
+    assert.strictEqual(zeroOctavesSvg, normalSvg, 'Should fall back to default numOctaves when 0 is provided');
+
+    // Test with negative octaves
+    const negativeOctavesSvg = sandbox.generateBarkFilterSVG(seed, defaultFreq, -1);
+    assert.strictEqual(negativeOctavesSvg, normalSvg, 'Should fall back to default numOctaves when negative value is provided');
+
+    // Test with non-numbers
+    const invalidValuesSvg = sandbox.generateBarkFilterSVG('invalid', null, undefined);
+    assert.strictEqual(invalidValuesSvg, normalSvg, 'Should fall back to default values when invalid types are provided');
+});
