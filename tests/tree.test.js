@@ -367,7 +367,7 @@ test('Schema.org JSON-LD metadata', () => {
     // Explicitly verify `@context`, `@id`, and `@type`
     assert.strictEqual(metadata['@context'], 'https://schema.org', 'Context should be https://schema.org');
     assert.strictEqual(metadata['@id'], 'https://creuzerm.github.io/Interactive-SVG-Tree-Generator/', 'ID should be the exact deployed application URL');
-    assert.strictEqual(metadata['@type'], 'WebApplication', 'Type should be WebApplication');
+    assert.strictEqual(metadata['@type'], 'https://schema.org/WebApplication', 'Type should be https://schema.org/WebApplication');
 
     // Verify properties
     assert.strictEqual(metadata.name, 'Interactive SVG Tree Generator', 'Name should match application title');
@@ -839,6 +839,50 @@ test('SVG path coordinate accuracy check', () => {
         }
     }
     assert.ok(pathCount > 0, 'Should find paths in optimized output');
+});
+
+test('SVG branch path string construction optimization yields identical results - Recursive Branching', () => {
+    sandbox.seedPRNG(12345);
+    const params = {
+        ...maxParams,
+        algorithm: 'Recursive Branching',
+        treeType: 'Default',
+        size: 20,
+        branchiness: 1,
+        shape: 50,
+        irregularity: 0,
+        trunkThickness: 20,
+        leafSize: 50,
+        leafiness: 50,
+        showBackground: true,
+        svgWidth: 100,
+        svgHeight: 100
+    };
+    const svg = sandbox.generateRecursiveBranchingTreeSVG(params);
+    const expected = fs.readFileSync('tests/expected_rec_svg.txt', 'utf8').trim();
+    assert.strictEqual(svg, expected, 'Optimized Recursive Branching SVG should match baseline string');
+});
+
+test('SVG branch path string construction optimization yields identical results - L-system', () => {
+    sandbox.seedPRNG(12345);
+    const params = {
+        ...maxParams,
+        algorithm: 'L-system',
+        treeType: 'Default',
+        size: 20,
+        branchiness: 1,
+        shape: 50,
+        irregularity: 0,
+        trunkThickness: 20,
+        leafSize: 50,
+        leafiness: 50,
+        showBackground: true,
+        svgWidth: 100,
+        svgHeight: 100
+    };
+    const svg = sandbox.generateLSystemTreeSVG(params);
+    const expected = fs.readFileSync('tests/expected_lsys_svg.txt', 'utf8').trim();
+    assert.strictEqual(svg, expected, 'Optimized L-system SVG should match baseline string');
 });
 
 test('Leaf polygon coordinate bounds check', () => {

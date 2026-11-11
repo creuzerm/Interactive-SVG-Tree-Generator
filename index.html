@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive SVG Tree Generator</title>
     <!-- Verified Schema.org JSON-LD metadata for https://schema.org/WebApplication -->
-    <!-- Schema verified -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
+      "@type": "https://schema.org/WebApplication",
       "@id": "https://creuzerm.github.io/Interactive-SVG-Tree-Generator/",
       "name": "Interactive SVG Tree Generator",
       "applicationCategory": "DesignApplication",
@@ -432,11 +431,11 @@
                         }
                         
                         let depthFactor = Math.min(1, stack.length / iterations);
-                        svgPaths.push(`<path d="M${x},${y} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, branchStrokeWidth)}" stroke-linecap="round"/>`);
+                        svgPaths.push(['<path d="M', x, ',', y, ' Q', cpX, ',', cpY, ' ', x2, ',', y2, '" stroke="', interpolateColor("#8B4513", "#228B22", depthFactor), '" stroke-width="', Math.max(0.5, branchStrokeWidth), '" stroke-linecap="round"/>'].join(''));
                         
                         // Add leaves if conditions met and not 'Branchy' type
                         if (newLength < leafThresholdLength && params.treeType !== 'Branchy') {
-                            svgPaths.push(`<circle cx="${x2}" cy="${y2}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                            svgPaths.push(['<circle cx="', x2, '" cy="', y2, '" r="', Math.max(1.5, baseLeafRadius * leafRadiusFactor), '" fill="', leafColor, '"/>'].join(''));
                         }
                         x = x2;
                         y = y2;
@@ -671,11 +670,12 @@
              * @param {number} currentDepth - Current recursion depth.
              * @param {number} strokeWidth - Stroke width of the current branch.
              */
+            let elementCount = 0;
             function drawBranch(x1, y1, len, ang, currentDepth, strokeWidth) {
-                if (currentDepth > maxDepth || len < 3 || svgElements.length > 15000) { // Base case: stop if too deep or too short
+                if (currentDepth > maxDepth || len < 3 || elementCount > 15000) { // Base case: stop if too deep or too short
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
-                        svgElements.push(`<circle cx="${x1}" cy="${y1}" r="${Math.max(1.5, baseLeafRadius * leafRadiusFactor)}" fill="${leafColor}"/>`);
+                        { svgElements.push(['<circle cx="', x1, '" cy="', y1, '" r="', Math.max(1.5, baseLeafRadius * leafRadiusFactor), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
                     }
                     return;
                 }
@@ -705,7 +705,7 @@
 
                 let depthFactor = Math.min(1, currentDepth / maxDepth);
                 // Add the branch segment as a curved path
-                svgElements.push(`<path d="M${x1},${y1} Q${cpX},${cpY} ${x2},${y2}" stroke="${interpolateColor("#8B4513", "#228B22", depthFactor)}" stroke-width="${Math.max(0.5, strokeWidth)}" stroke-linecap="round"/>`);
+                { svgElements.push(['<path d="M', x1, ',', y1, ' Q', cpX, ',', cpY, ' ', x2, ',', y2, '" stroke="', interpolateColor("#8B4513", "#228B22", depthFactor), '" stroke-width="', Math.max(0.5, strokeWidth), '" stroke-linecap="round"/>'].join('')); elementCount++; }
 
                 // Determine number of new branches (1 to 3 + irregularity influence)
                 const numBranches = Math.floor(baseNumBranches + (random() * (params.irregularity / 50)));
