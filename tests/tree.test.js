@@ -1094,3 +1094,37 @@ test('Wind force does not produce infinite coordinates', () => {
     assert.ok(!isNaN(x2), 'x2 coordinate should not be NaN');
     assert.ok(!isNaN(y2), 'y2 coordinate should not be NaN');
 });
+
+test('Recursion depth cap prevents stack overflows with maximum thresholds', () => {
+    const extremeParams = { ...maxParams, branchiness: 1000, size: 200, leafiness: 100 };
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(1);
+        sandbox.generateFractalTreeSVG({ ...extremeParams, algorithm: 'Fractal Tree' });
+    }, 'Fractal Tree should not throw RangeError: Maximum call stack size exceeded');
+
+    assert.doesNotThrow(() => {
+        sandbox.seedPRNG(1);
+        sandbox.generateRecursiveBranchingTreeSVG({ ...extremeParams, algorithm: 'Recursive Branching' });
+    }, 'Recursive Branching should not throw RangeError: Maximum call stack size exceeded');
+});
+
+test('Zero-branch segment length decay safely terminates without NaN coordinates', () => {
+    // Generate tree with size 0, which should decay the segment length to 0 immediately
+    const zeroSizeParams = { ...maxParams, size: 0 };
+
+    // Fractal Tree
+    sandbox.seedPRNG(1);
+    const fractalSvg = sandbox.generateFractalTreeSVG({ ...zeroSizeParams, algorithm: 'Fractal Tree' });
+    assert.strictEqual(fractalSvg.includes('NaN'), false, 'Fractal Tree SVG should not contain NaN coordinates when size is 0');
+
+    // Recursive Branching
+    sandbox.seedPRNG(1);
+    const recursiveSvg = sandbox.generateRecursiveBranchingTreeSVG({ ...zeroSizeParams, algorithm: 'Recursive Branching' });
+    assert.strictEqual(recursiveSvg.includes('NaN'), false, 'Recursive Branching SVG should not contain NaN coordinates when size is 0');
+
+    // L-system
+    sandbox.seedPRNG(1);
+    const lsystemSvg = sandbox.generateLSystemTreeSVG({ ...zeroSizeParams, algorithm: 'L-system' });
+    assert.strictEqual(lsystemSvg.includes('NaN'), false, 'L-system SVG should not contain NaN coordinates when size is 0');
+});
