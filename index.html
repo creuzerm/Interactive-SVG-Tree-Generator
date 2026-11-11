@@ -391,7 +391,8 @@
             }
 
             let svgPaths = [];
-            let leafPathParts = [];
+            let leafPathParts = new Array(16000);
+            let leafCount = 0;
             let x = startX;
             let y = startY;
             let currentAngle = -90; // Start pointing upwards
@@ -437,7 +438,7 @@
                         // Add leaves if conditions met and not 'Branchy' type
                         if (newLength < leafThresholdLength && params.treeType !== 'Branchy') {
                             let r = Math.max(1.5, baseLeafRadius * leafRadiusFactor);
-                            leafPathParts.push(['M', x2 - r, ',', y2, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join(''));
+                            leafPathParts[leafCount++] = ['M', x2 - r, ',', y2, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join('');
                         }
                         x = x2;
                         y = y2;
@@ -463,8 +464,8 @@
                         break;
                 }
             }
-            if (leafPathParts.length > 0) {
-                svgPaths.push(['<path d="', leafPathParts.join(' '), '" fill="', leafColor, '"/>'].join(''));
+            if (leafCount > 0) {
+                svgPaths.push(['<path d="', leafPathParts.slice(0, leafCount).join(' '), '" fill="', leafColor, '"/>'].join(''));
             }
             return svgPaths.join('');
         }
@@ -529,7 +530,8 @@
             // Adjust angle based on shape (Columnar to Circular)
             baseBranchAngle += (params.shape - 50) * 0.2; // -10 to +10 adjustment
 
-            let leafPathParts = [];
+            let leafPathParts = new Array(16000);
+            let leafCount = 0;
 
             /**
              * Recursive function to draw branches.
@@ -545,7 +547,7 @@
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
                         let r = Math.max(1.5, baseLeafRadius * leafRadiusFactor);
-                        leafPathParts.push(['M', x1 - r, ',', y1, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join(''));
+                        leafPathParts[leafCount++] = ['M', x1 - r, ',', y1, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join('');
                     }
                     return;
                 }
@@ -606,8 +608,8 @@
             // Initial call to start drawing the tree
             drawBranch(startX, startY, initialLength, -90, 0, initialStrokeWidth); // Start pointing upwards, initial stroke width from slider
 
-            if (leafPathParts.length > 0) {
-                { svgElements.push(['<path d="', leafPathParts.join(' '), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
+            if (leafCount > 0) {
+                { svgElements.push(['<path d="', leafPathParts.slice(0, leafCount).join(' '), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
             }
 
             return svgElements.join('');
@@ -673,7 +675,8 @@
             // Adjust angle spread based on shape (Columnar to Circular)
             baseAngleSpread += (params.shape - 50) * 0.3; // -15 to +15 adjustment
 
-            let leafPathParts = [];
+            let leafPathParts = new Array(16000);
+            let leafCount = 0;
 
             /**
              * Recursive function to draw branches.
@@ -690,7 +693,7 @@
                     // Add leaves if conditions met and not 'Branchy' type
                     if (len < leafThresholdLength && params.treeType !== 'Branchy') {
                         let r = Math.max(1.5, baseLeafRadius * leafRadiusFactor);
-                        leafPathParts.push(['M', x1 - r, ',', y1, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join(''));
+                        leafPathParts[leafCount++] = ['M', x1 - r, ',', y1, ' a', r, ',', r, ' 0 1,0 ', r * 2, ',0 a', r, ',', r, ' 0 1,0 -', r * 2, ',0'].join('');
                     }
                     return;
                 }
@@ -746,8 +749,8 @@
             // Initial call to start drawing the tree
             drawBranch(startX, startY, initialLength, initialAngle, 0, initialStrokeWidth); // Initial stroke width from slider
 
-            if (leafPathParts.length > 0) {
-                { svgElements.push(['<path d="', leafPathParts.join(' '), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
+            if (leafCount > 0) {
+                { svgElements.push(['<path d="', leafPathParts.slice(0, leafCount).join(' '), '" fill="', leafColor, '"/>'].join('')); elementCount++; }
             }
 
             return svgElements.join('');
