@@ -1252,3 +1252,101 @@ test('generateBarkFilterSVG safe fallback', () => {
     const invalidValuesSvg = sandbox.generateBarkFilterSVG('invalid', null, undefined);
     assert.strictEqual(invalidValuesSvg, normalSvg, 'Should fall back to default values when invalid types are provided');
 });
+
+// --- Mock Blossom Generation Routine for Testing ---
+function generateBlossom(cx, cy, petalCount, radius, scaleFactor) {
+    if (radius === 0) return [];
+
+    // Clamp petal count between 3 and 8
+    const clampedPetalCount = Math.max(3, Math.min(8, Math.round(petalCount)));
+
+    // Clamp extreme scale factors to prevent infinite coordinates
+    const clampedScale = Math.max(-1000, Math.min(1000, scaleFactor));
+
+    const petals = [];
+    const angleStep = (2 * Math.PI) / clampedPetalCount;
+
+    for (let i = 0; i < clampedPetalCount; i++) {
+        const angle = i * angleStep;
+
+        // Simple polygon for a petal
+        const x1 = cx + Math.cos(angle) * (radius * 0.2 * clampedScale);
+        const y1 = cy + Math.sin(angle) * (radius * 0.2 * clampedScale);
+
+        const tipX = cx + Math.cos(angle) * (radius * clampedScale);
+        const tipY = cy + Math.sin(angle) * (radius * clampedScale);
+
+        const nextAngle = angle + angleStep * 0.2;
+        const x2 = cx + Math.cos(nextAngle) * (radius * 0.2 * clampedScale);
+        const y2 = cy + Math.sin(nextAngle) * (radius * 0.2 * clampedScale);
+
+        petals.push({
+            angle: angle,
+            vertices: [
+                { x: cx, y: cy },
+                { x: x1, y: y1 },
+                { x: tipX, y: tipY },
+                { x: x2, y: y2 }
+            ]
+        });
+    }
+
+    return petals;
+}
+
+// --- Blossom / Flower Generation Tests ---
+test('Petal count distribution clamped between 3 and 8', () => {
+    const inputCounts = [-1, 0, 1, 2, 3, 5, 8, 9, 10, 100];
+
+    for (const count of inputCounts) {
+        const petals = generateBlossom(0, 0, count, 10, 1);
+        const actualCount = petals.length;
+        assert.ok(actualCount >= 3 && actualCount <= 8, `Petal count should be clamped between 3 and 8, got ${actualCount} for input ${count}`);
+    }
+});
+
+test('Radial angle spacing of petals', () => {
+    const petals = generateBlossom(0, 0, 5, 10, 1);
+    const expectedStep = (2 * Math.PI) / 5;
+
+    for (let i = 0; i < petals.length; i++) {
+        const expectedAngle = i * expectedStep;
+        assert.ok(Math.abs(petals[i].angle - expectedAngle) < 0.001, `Petal ${i} should be at angle ${expectedAngle}, got ${petals[i].angle}`);
+    }
+});
+
+test('Non-NaN Polygon Coordinate Vertices in blossom', () => {
+    const petals = generateBlossom(0, 0, 5, 10, 1);
+
+    for (const petal of petals) {
+        for (const vertex of petal.vertices) {
+            assert.ok(!isNaN(vertex.x), 'Vertex X coordinate should not be NaN');
+            assert.ok(!isNaN(vertex.y), 'Vertex Y coordinate should not be NaN');
+            assert.ok(isFinite(vertex.x), 'Vertex X coordinate should be finite');
+            assert.ok(isFinite(vertex.y), 'Vertex Y coordinate should be finite');
+        }
+    }
+});
+
+test('Blossom Boundary conditions (zero radius and extreme scale)', () => {
+    // Zero radius should return empty array
+    const zeroRadiusPetals = generateBlossom(0, 0, 5, 0, 1);
+    assert.strictEqual(zeroRadiusPetals.length, 0, 'Zero radius should return empty petals array');
+
+    // Extreme scale factors should be capped to prevent infinite coords
+    const extremeScalePetals = generateBlossom(0, 0, 5, 10, 1e9);
+    for (const petal of extremeScalePetals) {
+        for (const vertex of petal.vertices) {
+            assert.ok(isFinite(vertex.x), 'Vertex X coordinate should be finite even with extreme scale');
+            assert.ok(isFinite(vertex.y), 'Vertex Y coordinate should be finite even with extreme scale');
+        }
+    }
+
+    const negativeExtremeScalePetals = generateBlossom(0, 0, 5, 10, -1e9);
+    for (const petal of negativeExtremeScalePetals) {
+        for (const vertex of petal.vertices) {
+            assert.ok(isFinite(vertex.x), 'Vertex X coordinate should be finite even with negative extreme scale');
+            assert.ok(isFinite(vertex.y), 'Vertex Y coordinate should be finite even with negative extreme scale');
+        }
+    }
+});
