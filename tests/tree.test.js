@@ -273,6 +273,15 @@ test('Color gradient interpolation - precise hex values', () => {
     assert.strictEqual(sandbox.interpolateColor(c1, c2, 0.75).toUpperCase(), '#3D7A1F', 'Factor 0.75 interpolation');
 });
 
+test('Color gradient interpolation - seasonal leaf color interpolation', () => {
+    const springGreen = '#228B22';
+    const autumnGold = '#FFD700';
+
+    assert.strictEqual(sandbox.interpolateColor(springGreen, autumnGold, 0.25).toUpperCase(), '#5A9E1A', 'Factor 0.25 seasonal interpolation');
+    assert.strictEqual(sandbox.interpolateColor(springGreen, autumnGold, 0.5).toUpperCase(), '#91B111', 'Factor 0.5 seasonal interpolation');
+    assert.strictEqual(sandbox.interpolateColor(springGreen, autumnGold, 0.75).toUpperCase(), '#C8C409', 'Factor 0.75 seasonal interpolation');
+});
+
 test('Seeded pseudorandom number generation', () => {
     sandbox.seedPRNG(123);
     const val1 = sandbox.random();
@@ -830,4 +839,45 @@ test('SVG path coordinate accuracy check', () => {
         }
     }
     assert.ok(pathCount > 0, 'Should find paths in optimized output');
+});
+
+test('Leaf polygon coordinate bounds check', () => {
+    sandbox.seedPRNG(12345);
+    const params = {
+        ...maxParams,
+        algorithm: 'Fractal Tree',
+        size: 200,
+        branchiness: 10,
+        leafiness: 100, // Maximize leaves
+        treeType: 'Leafy',
+        svgWidth: 800,
+        svgHeight: 800
+    };
+
+    const svg = sandbox.generateFractalTreeSVG(params);
+
+    const circleRegex = /<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"/g;
+    let match;
+    let circleCount = 0;
+
+    while ((match = circleRegex.exec(svg)) !== null) {
+        circleCount++;
+        const cx = parseFloat(match[1]);
+        const cy = parseFloat(match[2]);
+        const r = parseFloat(match[3]);
+
+        assert.ok(!isNaN(cx), `cx coordinate ${match[1]} should be a valid number`);
+        assert.ok(!isNaN(cy), `cy coordinate ${match[2]} should be a valid number`);
+        assert.ok(!isNaN(r), `r attribute ${match[3]} should be a valid number`);
+
+        // Assert no negative dimensions for radius
+        assert.ok(r >= 0, `Leaf radius ${r} should not be negative`);
+
+        // Also assert that coordinates aren't wildly out of bounds or negative in a way that suggests a bug
+        // (cx and cy could technically be slightly negative if the tree spreads out, but we check they're not deeply negative)
+        assert.ok(cx > -5000 && cx < 5000, `cx coordinate ${cx} out of bounds`);
+        assert.ok(cy > -5000 && cy < 5000, `cy coordinate ${cy} out of bounds`);
+    }
+
+    assert.ok(circleCount > 0, 'Should find leaf circles to test');
 });
